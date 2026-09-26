@@ -75,6 +75,7 @@ export default function TabsLayout() {
           }}
         >
           <Tabs.Screen name="index" options={{ title: 'Fridge', tabBarIcon: icon('file-tray-stacked') }} />
+          <Tabs.Screen name="todo" options={{ title: 'To do', tabBarIcon: icon('checkbox') }} />
           <Tabs.Screen name="activity" options={{ title: 'Activity', tabBarIcon: icon('time') }} />
           <Tabs.Screen name="impact" options={{ title: 'Impact', tabBarIcon: icon('leaf') }} />
           {/* Scan: phone only (the Camera tab has its own barcode scanner on a computer); needs a real household. */}

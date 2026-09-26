@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { displayName } from '../categories'
 import { daysUntil } from '../freshness'
 import { useFridge } from '../FridgeProvider'
+import { useTheme } from '@/ui/ThemeProvider'
 import type { FridgeItem } from '../types'
 
 /** Local 'YYYY-MM-DD' for a Date. */
@@ -39,6 +40,8 @@ export function ExpiryEditor({ item, onClose }: { item: FridgeItem | null; onClo
   }, [item?.id])
 
   if (!item) return null
+  // Freezer items always use the freezer estimate (see adapter.ts), so a hand-set date wouldn't stick
+  const frozen = item.location === 'freezer'
   const d = daysUntil(date.toISOString(), now) ?? 0
   const relative = d === 0 ? 'today' : d === 1 ? 'tomorrow' : d === -1 ? 'yesterday' : d > 0 ? `in ${d} days` : `${-d} days ago`
 
@@ -51,12 +54,18 @@ export function ExpiryEditor({ item, onClose }: { item: FridgeItem | null; onClo
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <Pressable className="flex-1 items-center justify-center bg-black/35 p-6" onPress={onClose}>
         {/* Inner Pressable swallows taps so they don't close the sheet */}
-        <Pressable className="w-full max-w-[380px] gap-4 rounded-2xl bg-white p-5" onPress={() => {}}>
+        <Pressable className="w-full max-w-[380px] gap-4 rounded-2xl bg-surface p-5" onPress={() => {}}>
           <View>
             <Text className="text-xs font-semibold uppercase tracking-wide text-mute">Use by</Text>
             <Text className="text-lg font-bold text-ink">{displayName(item.name)}</Text>
           </View>
 
+          {frozen ? (
+            <Text className="text-sm leading-5 text-ink-soft">
+              This is in the freezer, so its date follows the freezer estimate. Move it back to the fridge to set a date by hand.
+            </Text>
+          ) : (
+          <>
           <View className="flex-row items-center justify-between rounded-xl bg-frost px-2 py-3">
             <StepButton icon="minus" label="One day earlier" onPress={() => setDate(addDays(date, -1))} />
             <View className="items-center">
@@ -73,24 +82,31 @@ export function ExpiryEditor({ item, onClose }: { item: FridgeItem | null; onClo
               <Pressable
                 key={q.label}
                 onPress={() => setDate(addDays(now, q.days))}
-                className="rounded-full border border-line bg-white px-3 py-1.5 active:bg-frost"
+                className="rounded-full border border-line bg-surface px-3 py-1.5 active:bg-frost"
               >
                 <Text className="text-xs font-semibold text-ink">{q.label}</Text>
               </Pressable>
             ))}
           </View>
 
+          </>
+          )}
+
           <View className="flex-row items-center gap-2">
+            {!frozen && (
             <Pressable onPress={() => save(null)} className="px-2 py-2.5">
               <Text className="text-sm font-medium text-mute">Use estimate</Text>
             </Pressable>
+            )}
             <View className="flex-1" />
             <Pressable onPress={onClose} className="rounded-lg border border-line px-4 py-2.5 active:bg-frost">
               <Text className="text-sm font-semibold text-ink">Cancel</Text>
             </Pressable>
+            {!frozen && (
             <Pressable onPress={() => save(toDateString(date))} className="rounded-lg bg-ink px-4 py-2.5 active:opacity-80">
-              <Text className="text-sm font-semibold text-white">Save</Text>
+              <Text className="text-sm font-semibold text-on-ink">Save</Text>
             </Pressable>
+            )}
           </View>
         </Pressable>
       </Pressable>
@@ -99,14 +115,15 @@ export function ExpiryEditor({ item, onClose }: { item: FridgeItem | null; onClo
 }
 
 function StepButton({ icon, label, onPress }: { icon: 'minus' | 'plus'; label: string; onPress: () => void }) {
+  const { c } = useTheme()
   return (
     <Pressable
       onPress={onPress}
       accessibilityLabel={label}
       hitSlop={6}
-      className="h-10 w-10 items-center justify-center rounded-full border border-line bg-white active:bg-frost"
+      className="h-10 w-10 items-center justify-center rounded-full border border-line bg-surface active:bg-frost"
     >
-      <MaterialCommunityIcons name={icon} size={20} color="#17251f" />
+      <MaterialCommunityIcons name={icon} size={20} color={c.text} />
     </Pressable>
   )
 }

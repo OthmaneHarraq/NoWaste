@@ -5,24 +5,26 @@ import type { BottomTabBarProps } from 'expo-router/js-tabs'
 import { useFridge } from '@/fridge/FridgeProvider'
 import { freshnessOf } from '@/fridge/freshness'
 import { totals, wasteFreeStreak } from '@/fridge/stats'
+import { useTheme } from './ThemeProvider'
 
 type IconName = keyof typeof MaterialCommunityIcons.glyphMap
 
 const NAV: Record<string, { label: string; icon: IconName; hint: string }> = {
   index:    { label: 'Fridge',   icon: 'fridge-outline',        hint: 'What’s inside' },
+  todo:     { label: 'To do',    icon: 'clipboard-check-outline', hint: 'Use up, shop smart' },
   activity: { label: 'Activity', icon: 'timeline-text-outline', hint: 'In, out, used' },
   impact:   { label: 'Impact',   icon: 'leaf',                  hint: 'Waste avoided' },
   camera:   { label: 'Camera',   icon: 'camera-outline',        hint: 'Detector' },
   settings: { label: 'Settings', icon: 'cog-outline',           hint: 'Fridge & account' },
 }
-const PRIMARY = ['index', 'activity', 'impact']
+const PRIMARY = ['index', 'todo', 'activity', 'impact']
 
 /**
  * Wide-screen navigation (web/tablet): brand, the three main destinations with room to
  * breathe, device links, and a small "how are we doing" card anchoring the bottom.
  */
 export function Sidebar({ state, descriptors, navigation, fridgeName }: BottomTabBarProps & { fridgeName: string }) {
-  const { actionNeeded, activity, history, now } = useFridge()
+  const { actionNeeded, current, activity, history, now } = useFridge()
 
   const visible = state.routes.filter(r => {
     const style = descriptors[r.key]?.options.tabBarItemStyle as { display?: string } | undefined
@@ -34,7 +36,8 @@ export function Sidebar({ state, descriptors, navigation, fridgeName }: BottomTa
   const expired = actionNeeded.filter(i => freshnessOf(i, now) === 'expired').length
   const today = activity.filter(a => !a.undone && new Date(a.at).toDateString() === now.toDateString()).length
   const badges: Record<string, { n: number; tone: 'alert' | 'warn' | 'quiet' } | undefined> = {
-    index: actionNeeded.length ? { n: actionNeeded.length, tone: expired ? 'alert' : 'warn' } : undefined,
+    index: current.length ? { n: current.length, tone: 'quiet' } : undefined,
+    todo: actionNeeded.length ? { n: actionNeeded.length, tone: expired ? 'alert' : 'warn' } : undefined,
     activity: today ? { n: today, tone: 'quiet' } : undefined,
   }
 
@@ -48,14 +51,14 @@ export function Sidebar({ state, descriptors, navigation, fridgeName }: BottomTa
   }
 
   return (
-    <View className="h-full w-[264px] border-r border-line bg-white" style={{ paddingTop: 22, paddingBottom: 18 }}>
+    <View className="h-full w-[264px] border-r border-line bg-surface" style={{ paddingTop: 22, paddingBottom: 18 }}>
       {/* Brand */}
       <View className="flex-row items-center gap-3 px-6">
         <View className="h-11 w-11 items-center justify-center rounded-[14px] bg-fresh-600" style={{ shadowColor: '#23804a', shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}>
           <MaterialCommunityIcons name="leaf" size={24} color="#fff" style={{ transform: [{ rotate: '-12deg' }] }} />
         </View>
         <View className="flex-1">
-          <Text className="text-[20px] font-extrabold tracking-tight text-ink">NoWaste</Text>
+          <Text className="font-display-bold text-[22px] tracking-tight text-ink">NoWaste</Text>
           <Text className="text-[13px] text-mute" numberOfLines={1}>{fridgeName}</Text>
         </View>
       </View>
@@ -85,6 +88,7 @@ function NavItem({ name, focused, badge, onPress }: {
 }) {
   const [hover, setHover] = useState(false)
   const nav = NAV[name]
+  const { c } = useTheme()
   const badgeStyle = badge?.tone === 'alert' ? 'bg-spoiled-500' : badge?.tone === 'warn' ? 'bg-soon-500' : 'bg-ink-soft'
 
   return (
@@ -99,8 +103,8 @@ function NavItem({ name, focused, badge, onPress }: {
     >
       {/* Active accent bar */}
       <View className={`absolute bottom-3 left-0 top-3 w-1 rounded-r-full ${focused ? 'bg-fresh-600' : 'bg-transparent'}`} />
-      <View className={`h-10 w-10 items-center justify-center rounded-xl ${focused ? 'bg-fresh-600' : hover ? 'bg-white' : 'bg-frost'}`}>
-        <MaterialCommunityIcons name={nav.icon} size={22} color={focused ? '#fff' : '#4c5d55'} />
+      <View className={`h-10 w-10 items-center justify-center rounded-xl ${focused ? 'bg-fresh-600' : hover ? 'bg-surface' : 'bg-frost'}`}>
+        <MaterialCommunityIcons name={nav.icon} size={22} color={focused ? '#ffffff' : c.textSoft} />
       </View>
       <View className="flex-1">
         <Text className={`text-[16px] font-bold ${focused ? 'text-fresh-700' : 'text-ink'}`}>{nav.label}</Text>
@@ -125,11 +129,11 @@ function ScoreCard({ history, now, onPress }: { history: ReturnType<typeof useFr
   const pct = rate === null ? null : Math.round(rate * 100)
 
   return (
-    <Pressable onPress={onPress} className="mx-4 overflow-hidden rounded-3xl bg-[#123526] p-4 active:opacity-90">
+    <Pressable onPress={onPress} className="mx-4 overflow-hidden rounded-3xl border border-[#23402f] bg-[#123526] p-4 active:opacity-90">
       <MaterialCommunityIcons name="leaf" size={110} color="#1b4a35" style={{ position: 'absolute', right: -22, bottom: -26, transform: [{ rotate: '-20deg' }] }} />
       <Text className="text-[11px] font-bold uppercase tracking-[2px] text-[#8fc9a8]">This month</Text>
       <View className="mt-1 flex-row items-end gap-2">
-        <Text className="text-[34px] font-extrabold leading-[38px] tracking-tighter text-white">{pct === null ? '—' : `${pct}%`}</Text>
+        <Text className="font-display-bold text-[36px] leading-[40px] text-white">{pct === null ? '—' : `${pct}%`}</Text>
         <Text className="mb-1.5 text-[12px] text-[#cfe7d9]">waste{'\n'}avoided</Text>
       </View>
       <View className="mt-3 h-2 flex-row overflow-hidden rounded-full bg-[#1d4a37]">

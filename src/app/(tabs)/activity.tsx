@@ -8,6 +8,7 @@ import { FoodShape, FoodTile } from '@/fridge/components/FoodShape'
 import type { ActivityEntry, ActivityKind, FoodCategory } from '@/fridge/types'
 import { FadeIn } from '@/ui/motion'
 import { shadow } from '@/ui/theme'
+import { useTheme } from '@/ui/ThemeProvider'
 
 // OWNER: phone app team. Everything that went in or out, grouped by day, newest first,
 // with one-tap Undo and Fix. Fixing a name teaches the household an alias.
@@ -15,7 +16,10 @@ import { shadow } from '@/ui/theme'
 type IconName = keyof typeof MaterialCommunityIcons.glyphMap
 
 // Kind → look. Green = saved and red = wasted, same meaning as everywhere else; moves are neutral.
-const KIND: Record<ActivityKind, { verb: string; icon: IconName; color: string; tint: string }> = {
+// color = node + strong text, tint = wash behind it. Dark mode swaps pastels for deep washes and
+// lightens the text so it keeps its contrast.
+type KindLook = { verb: string; icon: IconName; color: string; tint: string }
+const KIND_LIGHT: Record<ActivityKind, KindLook> = {
   added:       { verb: 'Added',      icon: 'arrow-down-bold',       color: '#3f6a8f', tint: '#e3eff8' },
   removed:     { verb: 'Took out',   icon: 'arrow-up-bold',         color: '#4c5d55', tint: '#e8eeeb' },
   returned:    { verb: 'Put back',   icon: 'undo-variant',          color: '#6d5aa6', tint: '#ece8f6' },
@@ -23,6 +27,15 @@ const KIND: Record<ActivityKind, { verb: string; icon: IconName; color: string; 
   expired:     { verb: 'Expired',    icon: 'clock-remove-outline',  color: '#8a2419', tint: '#f8d3ce' },
   thrown_away: { verb: 'Threw away', icon: 'trash-can-outline',     color: '#8a2419', tint: '#f8d3ce' },
 }
+const KIND_DARK: Record<ActivityKind, KindLook> = {
+  added:       { ...KIND_LIGHT.added,       color: '#8cc0e6', tint: '#172834' },
+  removed:     { ...KIND_LIGHT.removed,     color: '#b1bfb8', tint: '#222c28' },
+  returned:    { ...KIND_LIGHT.returned,    color: '#b9a8ee', tint: '#231f35' },
+  consumed:    { ...KIND_LIGHT.consumed,    color: '#74d49b', tint: '#1b3a29' },
+  expired:     { ...KIND_LIGHT.expired,     color: '#ff8e86', tint: '#45211f' },
+  thrown_away: { ...KIND_LIGHT.thrown_away, color: '#ff8e86', tint: '#45211f' },
+}
+const useKinds = () => (useTheme().dark ? KIND_DARK : KIND_LIGHT)
 
 type Filter = 'all' | 'moves' | 'saved' | 'wasted'
 const FILTERS: { key: Filter; label: string; icon: IconName; kinds: ActivityKind[] | null }[] = [
@@ -34,7 +47,7 @@ const FILTERS: { key: Filter; label: string; icon: IconName; kinds: ActivityKind
 
 const WEB = Platform.OS === 'web'
 // Web-only texture and gradient (plain colours elsewhere).
-const DOTS = WEB ? 'bg-[radial-gradient(#dde6e1_1.2px,transparent_1.2px)] bg-[length:20px_20px]' : ''
+const DOTS = WEB ? 'bg-[radial-gradient(#dde6e1_1.2px,transparent_1.2px)] bg-[length:20px_20px] dark:bg-[radial-gradient(#1f2a25_1.2px,transparent_1.2px)]' : ''
 const HERO_GRADIENT = WEB ? 'bg-[linear-gradient(125deg,#0f2e21_0%,#17442f_45%,#1f6b47_100%)]' : ''
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
@@ -65,6 +78,7 @@ export default function ActivityScreen() {
   const [fixing, setFixing] = useState<ActivityEntry | null>(null)
   const wide = width >= 1180
   const phone = width < 600
+  const { c: pal } = useTheme()
 
   const kinds = FILTERS.find(f => f.key === filter)!.kinds
   const entries = kinds ? activity.filter(a => kinds.includes(a.kind)) : activity
@@ -90,12 +104,12 @@ export default function ActivityScreen() {
             <Pressable
               key={f.key}
               onPress={() => setFilter(f.key)}
-              className={`flex-row items-center gap-2 rounded-full border px-3.5 py-2 ${on ? 'border-ink bg-ink' : 'border-line bg-white active:bg-frost'}`}
+              className={`flex-row items-center gap-2 rounded-full border px-3.5 py-2 ${on ? 'border-ink bg-ink' : 'border-line bg-surface active:bg-frost'}`}
               style={on ? undefined : shadow.card}
             >
-              <MaterialCommunityIcons name={f.icon} size={15} color={on ? '#fff' : '#4c5d55'} />
-              <Text className={`text-[13px] font-semibold ${on ? 'text-white' : 'text-ink'}`}>{f.label}</Text>
-              <Text className={`text-xs ${on ? 'text-[#b7c6bf]' : 'text-mute'}`}>{filterCount(f)}</Text>
+              <MaterialCommunityIcons name={f.icon} size={15} color={on ? pal.onInk : pal.textSoft} />
+              <Text className={`text-[13px] font-semibold ${on ? 'text-on-ink' : 'text-ink'}`}>{f.label}</Text>
+              <Text className={`text-xs ${on ? 'text-mute' : 'text-mute'}`}>{filterCount(f)}</Text>
             </Pressable>
           )
         })}
@@ -175,7 +189,7 @@ function Hero({ today, activity, now, phone }: { today: ReturnType<typeof counts
 
   return (
     <FadeIn>
-      <View className={`overflow-hidden rounded-[28px] bg-[#123526] ${HERO_GRADIENT}`} style={[{ padding: phone ? 20 : 28 }, shadow.raised]}>
+      <View className={`overflow-hidden rounded-[28px] border border-[#23402f] bg-[#123526] ${HERO_GRADIENT}`} style={[{ padding: phone ? 20 : 28 }, shadow.raised]}>
         {/* Decorative shapes */}
         <MaterialCommunityIcons name="fridge-outline" size={220} color="#ffffff" style={{ position: 'absolute', right: -30, top: -30, opacity: 0.05, transform: [{ rotate: '8deg' }] }} />
         <MaterialCommunityIcons name="leaf" size={120} color="#ffffff" style={{ position: 'absolute', left: '42%', bottom: -40, opacity: 0.05, transform: [{ rotate: '-24deg' }] }} />
@@ -183,7 +197,7 @@ function Hero({ today, activity, now, phone }: { today: ReturnType<typeof counts
         <View className="flex-row flex-wrap items-end justify-between gap-6">
           <View style={{ minWidth: 260, flexGrow: 1, flexShrink: 1, flexBasis: 420 }}>
             <Text className="text-xs font-bold uppercase tracking-[3px] text-[#8fc9a8]">Activity</Text>
-            <Text className={`${phone ? 'text-[28px]' : 'text-[36px]'} mt-1 font-extrabold tracking-tight text-white`}>Today in your fridge</Text>
+            <Text className={`${phone ? 'text-[30px]' : 'text-[40px]'} mt-1 font-display-bold leading-[1.1] text-white`}>Today in your fridge</Text>
             <Text className="mt-1 text-[14px] text-[#cfe7d9]">{now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
 
             <View className="mt-6 flex-row flex-wrap gap-3">
@@ -243,24 +257,25 @@ function Key({ color, label }: { color: string; label: string }) {
 
 function DayHeader({ title, date, entries }: { title: string; date: Date; entries: ActivityEntry[] }) {
   const c = counts(entries)
+  const K = useKinds()
   const chips: { n: number; label: string; bg: string; fg: string }[] = [
-    { n: c.in, label: 'in', bg: '#e3eff8', fg: '#3f6a8f' },
-    { n: c.out, label: 'out', bg: '#e8eeeb', fg: '#4c5d55' },
-    { n: c.used, label: 'used', bg: '#d5eedc', fg: '#1b653b' },
-    { n: c.wasted, label: 'wasted', bg: '#f8d3ce', fg: '#8a2419' },
+    { n: c.in, label: 'in', bg: K.added.tint, fg: K.added.color },
+    { n: c.out, label: 'out', bg: K.removed.tint, fg: K.removed.color },
+    { n: c.used, label: 'used', bg: K.consumed.tint, fg: K.consumed.color },
+    { n: c.wasted, label: 'wasted', bg: K.expired.tint, fg: K.expired.color },
   ].filter(x => x.n > 0)
 
   return (
     <View className="mb-2 mt-8 flex-row items-center gap-4">
       {/* Calendar tile */}
-      <View className="w-12 overflow-hidden rounded-xl border border-line bg-white" style={shadow.card}>
+      <View className="w-12 overflow-hidden rounded-xl border border-line bg-surface" style={shadow.card}>
         <View className="items-center bg-fresh-600 py-0.5">
           <Text className="text-[9px] font-bold uppercase tracking-wider text-white">{date.toLocaleDateString(undefined, { month: 'short' })}</Text>
         </View>
         <Text className="py-1 text-center text-[19px] font-extrabold text-ink">{date.getDate()}</Text>
       </View>
       <View className="flex-1 gap-1.5">
-        <Text className="text-[20px] font-extrabold tracking-tight text-ink">{title}</Text>
+        <Text className="font-display text-[22px] text-ink">{title}</Text>
         <View className="flex-row flex-wrap gap-1.5">
           {chips.map(ch => (
             <View key={ch.label} className="rounded-full px-2 py-0.5" style={{ backgroundColor: ch.bg }}>
@@ -281,7 +296,8 @@ function TimelineRow({ entry, first, last, onUndo, onFix }: {
   onFix: () => void
 }) {
   const [hover, setHover] = useState(false)
-  const k = KIND[entry.kind]
+  const k = useKinds()[entry.kind]
+  const { c: pal, dark } = useTheme()
   const time = new Date(entry.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
   const canEdit = !entry.undone && entry.eventId
 
@@ -292,7 +308,7 @@ function TimelineRow({ entry, first, last, onUndo, onFix }: {
         <View className="w-12 items-center">
           <View className={`w-[2px] ${first ? 'bg-transparent' : 'bg-line'}`} style={{ height: 22 }} />
           <View className="h-9 w-9 items-center justify-center rounded-full border-[3px] border-paper" style={{ backgroundColor: k.color }}>
-            <MaterialCommunityIcons name={k.icon} size={15} color="#fff" />
+            <MaterialCommunityIcons name={k.icon} size={15} color={dark ? pal.background : '#ffffff'} />
           </View>
           <View className={`w-[2px] flex-1 ${last ? 'bg-transparent' : 'bg-line'}`} />
         </View>
@@ -300,8 +316,8 @@ function TimelineRow({ entry, first, last, onUndo, onFix }: {
         <Pressable
           onHoverIn={() => setHover(true)}
           onHoverOut={() => setHover(false)}
-          className={`my-1.5 flex-1 flex-row items-center gap-4 rounded-2xl border bg-white px-4 py-3 ${entry.undone ? 'opacity-45' : ''}`}
-          style={[shadow.card, { borderColor: hover ? k.color + '55' : '#e2e9e5' }]}
+          className={`my-1.5 flex-1 flex-row items-center gap-4 rounded-2xl border bg-surface px-4 py-3 ${entry.undone ? 'opacity-45' : ''}`}
+          style={[shadow.card, { borderColor: hover ? k.color + '66' : pal.border }]}
         >
           {/* The food */}
           <View className="h-14 w-14 items-center justify-center rounded-2xl" style={{ backgroundColor: k.tint }}>
@@ -343,9 +359,10 @@ function TimelineRow({ entry, first, last, onUndo, onFix }: {
 }
 
 function Meta({ icon, text }: { icon: IconName; text: string }) {
+  const { c } = useTheme()
   return (
     <View className="flex-row items-center gap-1">
-      <MaterialCommunityIcons name={icon} size={13} color="#8a9a93" />
+      <MaterialCommunityIcons name={icon} size={13} color={c.muted} />
       <Text className="text-[12px] text-ink-soft">{text}</Text>
     </View>
   )
@@ -353,10 +370,11 @@ function Meta({ icon, text }: { icon: IconName; text: string }) {
 
 function Confidence({ value }: { value: number }) {
   const pct = Math.round(value * 100)
-  const color = pct >= 80 ? '#2f9e5b' : pct >= 60 ? '#e39a1b' : '#d9493a'
+  const { c } = useTheme()
+  const color = pct >= 80 ? c.fresh : pct >= 60 ? c.soon : c.spoiled
   return (
     <View className="flex-row items-center gap-1.5">
-      <View className="h-1.5 w-12 overflow-hidden rounded-full bg-[#e8eeeb]">
+      <View className="h-1.5 w-12 overflow-hidden rounded-full bg-frost">
         <View style={{ width: `${pct}%`, height: '100%', backgroundColor: color, borderRadius: 999 }} />
       </View>
       <Text className="text-[12px] text-ink-soft">{pct}% sure</Text>
@@ -365,9 +383,10 @@ function Confidence({ value }: { value: number }) {
 }
 
 function Chip({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+  const { c } = useTheme()
   return (
-    <Pressable onPress={onPress} className="flex-row items-center gap-1 rounded-full border border-line bg-white px-3 py-1.5 active:bg-frost">
-      <MaterialCommunityIcons name={icon} size={13} color="#4c5d55" />
+    <Pressable onPress={onPress} className="flex-row items-center gap-1 rounded-full border border-line bg-surface px-3 py-1.5 active:bg-frost">
+      <MaterialCommunityIcons name={icon} size={13} color={c.textSoft} />
       <Text className="text-[13px] font-semibold text-ink">{label}</Text>
     </Pressable>
   )
@@ -381,13 +400,13 @@ function EmptyState({ filter }: { filter: Filter }) {
     wasted: ['Zero waste here', 'Nothing has been thrown out. Keep it that way!'],
   }
   return (
-    <View className="mt-10 items-center rounded-3xl border border-dashed border-line bg-white px-6 py-12">
+    <View className="mt-10 items-center rounded-3xl border border-dashed border-line bg-surface px-6 py-12">
       <View className="flex-row items-end gap-2">
         <FoodShape name="apple" category="produce" scale={1.1} />
         <FoodShape name="milk" category="dairy" scale={0.9} />
         <FoodShape name="carrot" category="produce" scale={1.1} />
       </View>
-      <Text className="mt-5 text-[18px] font-extrabold text-ink">{copy[filter][0]}</Text>
+      <Text className="mt-5 font-display text-[20px] text-ink">{copy[filter][0]}</Text>
       <Text className="mt-1 text-center text-sm text-ink-soft">{copy[filter][1]}</Text>
     </View>
   )
@@ -398,17 +417,18 @@ function EmptyState({ filter }: { filter: Filter }) {
 function WeekCard({ activity, now }: { activity: ActivityEntry[]; now: Date }) {
   const since = startOfDay(now) - 6 * 86_400_000
   const c = counts(activity.filter(a => new Date(a.at).getTime() >= since))
+  const { c: pal } = useTheme()
   const rows = [
-    { label: 'Went in', n: c.in, color: '#6aaede' },
-    { label: 'Taken out', n: c.out, color: '#9aa9a2' },
-    { label: 'Used up', n: c.used, color: '#2f9e5b' },
-    { label: 'Wasted', n: c.wasted, color: '#d9493a' },
+    { label: 'Went in', n: c.in, color: pal.ice },
+    { label: 'Taken out', n: c.out, color: pal.muted },
+    { label: 'Used up', n: c.used, color: pal.fresh },
+    { label: 'Wasted', n: c.wasted, color: pal.spoiled },
   ]
   const max = Math.max(1, ...rows.map(r => r.n))
   return (
     <FadeIn delay={80}>
-      <View className="rounded-3xl border border-line bg-white p-5" style={shadow.card}>
-        <Text className="text-[17px] font-extrabold text-ink">This week</Text>
+      <View className="rounded-3xl border border-line bg-surface p-5" style={shadow.card}>
+        <Text className="font-display text-[19px] text-ink">This week</Text>
         <Text className="mb-4 text-[13px] text-mute">Every move the fridge saw</Text>
         <View className="gap-3">
           {rows.map(r => (
@@ -417,7 +437,7 @@ function WeekCard({ activity, now }: { activity: ActivityEntry[]; now: Date }) {
                 <Text className="text-[13px] font-semibold text-ink">{r.label}</Text>
                 <Text className="text-[13px] font-bold text-ink">{r.n}</Text>
               </View>
-              <View className="h-2.5 overflow-hidden rounded-full bg-[#f1f5f3]">
+              <View className="h-2.5 overflow-hidden rounded-full bg-frost">
                 <View style={{ width: `${(r.n / max) * 100}%`, height: '100%', backgroundColor: r.color, borderRadius: 999 }} />
               </View>
             </View>
@@ -442,8 +462,8 @@ function TopItems({ activity, now }: { activity: ActivityEntry[]; now: Date }) {
   if (!top.length) return null
   return (
     <FadeIn delay={140}>
-      <View className="rounded-3xl border border-line bg-white p-5" style={shadow.card}>
-        <Text className="text-[17px] font-extrabold text-ink">Most handled</Text>
+      <View className="rounded-3xl border border-line bg-surface p-5" style={shadow.card}>
+        <Text className="font-display text-[19px] text-ink">Most handled</Text>
         <Text className="mb-3 text-[13px] text-mute">Last two weeks</Text>
         {top.map((t, i) => (
           <View key={t.name} className={`flex-row items-center gap-3 py-2 ${i ? 'border-t border-line' : ''}`}>
@@ -461,12 +481,13 @@ function TopItems({ activity, now }: { activity: ActivityEntry[]; now: Date }) {
 }
 
 function TipCard() {
+  const { dark } = useTheme()
   return (
     <FadeIn delay={200}>
-      <View className="overflow-hidden rounded-3xl bg-soon-50 p-5" style={{ borderWidth: 1, borderColor: '#fcebc6' }}>
-        <MaterialCommunityIcons name="lightbulb-on-outline" size={90} color="#fcebc6" style={{ position: 'absolute', right: -14, bottom: -14 }} />
+      <View className="overflow-hidden rounded-3xl bg-soon-50 p-5" style={{ borderWidth: 1, borderColor: dark ? '#3f2f15' : '#fcebc6' }}>
+        <MaterialCommunityIcons name="lightbulb-on-outline" size={90} color={dark ? '#3f2f15' : '#fcebc6'} style={{ position: 'absolute', right: -14, bottom: -14 }} />
         <Text className="text-[11px] font-bold uppercase tracking-[2px] text-soon-700">Tip</Text>
-        <Text className="mt-1.5 text-[15px] font-bold leading-5 text-ink">Wrong item? Tap Fix.</Text>
+        <Text className="mt-1.5 font-display text-[16px] leading-5 text-ink">Wrong item? Tap Fix.</Text>
         <Text className="mt-1 text-[13px] leading-5 text-ink-soft">
           NoWaste remembers the correction, so the next time the camera sees the same thing it gets it right.
         </Text>
@@ -494,8 +515,8 @@ function FixModal({ entry, onClose, onSave }: {
       onShow={() => { setName(entry?.itemName ?? ''); setAction(entry?.kind === 'removed' ? 'out' : 'in') }}
     >
       <View className="flex-1 items-center justify-center bg-black/35 p-6">
-        <View className="w-full max-w-[420px] rounded-3xl bg-white p-5">
-          <Text className="mb-3 text-lg font-bold text-ink">Fix this entry</Text>
+        <View className="w-full max-w-[420px] rounded-3xl bg-surface p-5">
+          <Text className="mb-3 font-display text-[20px] text-ink">Fix this entry</Text>
           <Text className="mb-1.5 mt-2 text-[13px] font-semibold text-mute">What was it?</Text>
           <TextInput className="rounded-xl border border-line bg-paper p-3 text-[15px] text-ink" value={name} onChangeText={setName} autoFocus />
           {!USE_MOCK_DATA && (
@@ -512,7 +533,7 @@ function FixModal({ entry, onClose, onSave }: {
           )}
           <View className="mt-5 flex-row gap-2.5">
             <Pressable onPress={onClose} className="flex-1 items-center rounded-xl bg-frost p-3"><Text className="text-ink">Cancel</Text></Pressable>
-            <Pressable onPress={() => name.trim() && onSave(name.trim(), action)} className="flex-1 items-center rounded-xl bg-ink p-3"><Text className="font-semibold text-white">Save</Text></Pressable>
+            <Pressable onPress={() => name.trim() && onSave(name.trim(), action)} className="flex-1 items-center rounded-xl bg-ink p-3"><Text className="font-semibold text-on-ink">Save</Text></Pressable>
           </View>
         </View>
       </View>

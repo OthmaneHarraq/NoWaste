@@ -5,13 +5,13 @@ import { CATEGORIES } from '../categories'
 import type { DayStat } from '../stats'
 import type { FoodCategory } from '../types'
 import { CategoryIcon } from './visuals'
+import { useTheme } from '@/ui/ThemeProvider'
 
 // Chart colors: validated with the dataviz palette checker (CVD-safe via a lightness gap).
 // The coral is under 3:1 on white, so every chart here also has value labels / tooltip / table.
 export const SAVED = '#1f7a55'
 export const WASTED = '#f0907a'
-const GRID = '#e8eeeb'
-const TRACK = '#f3f6f4'
+// GRID / TRACK / axis come from the theme (useTheme().c.border / frost).
 
 /** Rect with only the top corners rounded (data end), flat on the baseline. */
 function topRounded(x: number, y: number, w: number, h: number, r: number) {
@@ -23,6 +23,8 @@ function topRounded(x: number, y: number, w: number, h: number, r: number) {
 export function SavedWastedChart({ data, height = 220 }: { data: DayStat[]; height?: number }) {
   const [width, setWidth] = useState(0)
   const [active, setActive] = useState<number | null>(null)
+  const { c } = useTheme()
+  const GRID = c.border
   const grow = useRef(new Animated.Value(0)).current
   const [g, setG] = useState(0)
 
@@ -62,7 +64,7 @@ export function SavedWastedChart({ data, height = 220 }: { data: DayStat[]; heig
                 </G>
               )
             })}
-            <Line x1={axisW} x2={width} y1={height} y2={height} stroke="#cfd9d4" strokeWidth={1} />
+            <Line x1={axisW} x2={width} y1={height} y2={height} stroke={c.glass} strokeWidth={1} />
           </Svg>
 
           {/* y-axis labels */}
@@ -104,7 +106,7 @@ export function SavedWastedChart({ data, height = 220 }: { data: DayStat[]; heig
 
 function Tooltip({ left, top, title, rows }: { left: number; top: number; title: string; rows: { color: string; label: string; value: number }[] }) {
   return (
-    <View pointerEvents="none" className="absolute w-[140px] rounded-xl border border-line bg-white px-3 py-2" style={{ left, top, shadowColor: '#17251f', shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}>
+    <View pointerEvents="none" className="absolute w-[140px] rounded-xl border border-line bg-surface px-3 py-2" style={{ left, top, shadowColor: '#17251f', shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}>
       <Text className="mb-1 text-xs font-semibold text-ink">{title}</Text>
       {rows.map(r => (
         <View key={r.label} className="flex-row items-center justify-between">
@@ -134,6 +136,8 @@ export function Legend({ items }: { items: { color: string; label: string }[] })
 
 /** Wasted items per category: horizontal bars, direct-labelled, biggest first. */
 export function CategoryBars({ data }: { data: { category: FoodCategory; count: number }[] }) {
+  const { c } = useTheme()
+  const TRACK = c.frost
   const max = Math.max(1, ...data.map(d => d.count))
   const grow = useRef(new Animated.Value(0)).current
   useEffect(() => {

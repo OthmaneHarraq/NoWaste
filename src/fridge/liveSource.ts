@@ -1,25 +1,28 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { supabase } from '@/lib/supabase'
-import { correctEvent, recordEvent, setExpiry, undoEvent } from '@/data/fridge'
-import type { FridgeEvent } from '@/types/db'
-import { buildSnapshot, type InventoryRow, type Moves, type Overrides } from './adapter'
-import type { ConnectionState, FridgeSnapshot, FridgeSource } from './types'
+import { correctEvent, recordEvent, setExpiry, setLocation, undoEvent, updateDisposition } from '@/data/fridge'
+import type { Disposition, FridgeEvent } from '@/types/db'
+import { buildSnapshot, type InventoryRow } from './adapter'
+import type { FridgeItem, FridgeSnapshot, FridgeSource } from './types'
 
 const HISTORY_DAYS = 30
 
+// Until supabase/migrations/20260926120000_add_location_and_disposition.sql is applied, the
+// new functions/params don't exist. Say so plainly instead of showing a PostgREST error.
+const NEEDS_MIGRATION = 'This needs the latest database update. Ask whoever manages Supabase to apply the new migrations.'
+const missingFunction = (error: string | null) => !!error && /could not find the function/i.test(error)
+const explain = (error: string | null) => (missingFunction(error) ? NEEDS_MIGRATION : error)
+
 /** Live Supabase data for one household, kept fresh by Realtime. */
 export function createLiveSource(householdId: string): FridgeSource {
-  const overridesKey = `nowaste:overrides:${householdId}`
-  // No location column yet, so freezer moves are remembered on this device.
-  const movesKey = `nowaste:moves:${householdId}`
   let inventory: InventoryRow[] = []
   let events: FridgeEvent[] = []
   let catalog = new Map<string, string | null>()
-  let overrides: Overrides = {}
-  let moves: Moves = {}
   let listener: ((s: FridgeSnapshot) => void) | null = null
+  // inventory id → the "out" event that just binned it, so "I composted it" can amend that
+  // event even before Realtime has delivered it.
+  const binnedBy = new Map<string, string>()
 
-  const emit = () => listener?.(buildSnapshot({ inventory, events, catalog, overrides, moves }))
+  const emit = () => listener?.(buildSnapshot({ inventory, events, catalog }))
 
   async function load() {
     const since = new Date(Date.now() - HISTORY_DAYS * 86_400_000).toISOString()
@@ -40,19 +43,27 @@ export function createLiveSource(householdId: string): FridgeSource {
     emit()
   }
 
-  async function saveOverride(eventId: string | undefined, value: 'consumed' | 'thrown_away') {
-    if (!eventId) return
-    overrides = { ...overrides, [eventId]: value }
+  /** Say what happened to something that already left. Shown at once; Realtime confirms. */
+  async function setDisposition(eventId: string | undefined, value: Disposition) {
+    if (!eventId) return 'Nothing to update'
+    events = events.map(e => (e.id === eventId ? { ...e, disposition: value } : e))
     emit()
-    await AsyncStorage.setItem(overridesKey, JSON.stringify(overrides)).catch(() => {})
+    const { error } = await updateDisposition(eventId, value)
+    if (error) load().catch(() => {})
+    return explain(error)
   }
 
-  /** Remove one of an in-fridge item, remembering whether it was eaten or binned. */
-  async function takeOut(name: string, value: 'consumed' | 'thrown_away') {
-    const { data, error } = await recordEvent({ householdId, label: name, action: 'out', source: 'manual' })
-    if (error) return error
-    await saveOverride(data?.id, value)
-    return null
+  /** Remove one of an in-fridge item, recording whether it was eaten or binned. */
+  async function takeOut(item: FridgeItem, value: Disposition) {
+    const location = inventory.find(r => r.id === item.id)?.location ?? undefined
+    let { data, error } = await recordEvent({ householdId, label: item.name, action: 'out', source: 'manual', location, disposition: value })
+    // Older database: a plain manual "out" already counts as eaten, so "Mark as used" still works.
+    // Binned/composted would be recorded as eaten, so those wait for the migration instead.
+    if (missingFunction(error) && value === 'consumed') {
+      ;({ data, error } = await recordEvent({ householdId, label: item.name, action: 'out', source: 'manual' }))
+    }
+    if (data && value === 'thrown_away') binnedBy.set(item.id, data.id)
+    return explain(error)
   }
 
   return {
@@ -66,8 +77,6 @@ export function createLiveSource(householdId: string): FridgeSource {
       }
 
       ;(async () => {
-        overrides = JSON.parse((await AsyncStorage.getItem(overridesKey).catch(() => null)) ?? '{}')
-        moves = JSON.parse((await AsyncStorage.getItem(movesKey).catch(() => null)) ?? '{}')
         const { data } = await supabase.from('foods').select('name, category')
         catalog = new Map((data ?? []).map(f => [f.name.toLowerCase(), f.category]))
         await load()
@@ -99,20 +108,30 @@ export function createLiveSource(householdId: string): FridgeSource {
     },
 
     async markUsed(item) {
-      if (item.status === 'pending_removal') return saveOverride(item.eventId, 'consumed').then(() => null)
-      return takeOut(item.name, 'consumed')
+      if (item.status === 'pending_removal') return setDisposition(item.eventId, 'consumed')
+      return takeOut(item, 'consumed')
     },
 
     async markThrownAway(item) {
-      if (item.status === 'pending_removal') return saveOverride(item.eventId, 'thrown_away').then(() => null)
-      return takeOut(item.name, 'thrown_away')
+      if (item.status === 'pending_removal') return setDisposition(item.eventId, 'thrown_away')
+      return takeOut(item, 'thrown_away')
+    },
+
+    async markComposted(item) {
+      const eventId = item.eventId ?? binnedBy.get(item.id)
+      if (eventId) return setDisposition(eventId, 'composted')
+      return takeOut(item, 'composted')
     },
 
     async moveTo(item, where) {
       if (item.status !== 'in_fridge') return 'Only items in the fridge can be moved'
-      moves = { ...moves, [item.id]: { where, at: new Date().toISOString() } }
-      emit()
-      await AsyncStorage.setItem(movesKey, JSON.stringify(moves)).catch(() => {})
+      // null = back to its usual fridge spot for its category.
+      const { data, error } = await setLocation(item.id, where === 'freezer' ? 'freezer' : null)
+      if (error) return explain(error)
+      if (data) {
+        inventory = inventory.map(r => (r.id === data.id ? { ...r, ...data } : r))
+        emit()
+      }
       return null
     },
 

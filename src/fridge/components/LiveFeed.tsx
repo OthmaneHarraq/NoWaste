@@ -7,11 +7,12 @@ import { timeAgo } from '../freshness'
 import { useFridge } from '../FridgeProvider'
 import type { ActivityEntry } from '../types'
 import { FoodTile } from './FoodShape'
+import { useTheme } from '@/ui/ThemeProvider'
 
-const VERB: Partial<Record<ActivityEntry['kind'], { text: string; icon: 'arrow-down' | 'arrow-up' | 'undo'; color: string }>> = {
-  added:    { text: 'Just added', icon: 'arrow-down', color: '#23804a' },
-  removed:  { text: 'Taken out',  icon: 'arrow-up',   color: '#4c5d55' },
-  returned: { text: 'Put back',   icon: 'undo',       color: '#3f7fb3' },
+const VERB: Partial<Record<ActivityEntry['kind'], { text: string; icon: 'arrow-down' | 'arrow-up' | 'undo'; color: 'primary' | 'textSoft' | 'ice' }>> = {
+  added:    { text: 'Just added', icon: 'arrow-down', color: 'primary' },
+  removed:  { text: 'Taken out',  icon: 'arrow-up',   color: 'textSoft' },
+  returned: { text: 'Put back',   icon: 'undo',       color: 'ice' },
 }
 
 /**
@@ -22,11 +23,12 @@ export function LiveFeed() {
   const { activity, connection, now, simulatedCamera, setSimulatedCamera } = useFridge()
   const detections = activity.filter(a => VERB[a.kind] && !a.undone).slice(0, 5)
   const latest = detections[0]
+  const { c } = useTheme()
   const on = connection === 'live' || (connection === 'demo' && simulatedCamera !== false)
 
   return (
-    <View className="overflow-hidden rounded-3xl border border-line bg-white" style={shadow.card}>
-      <View className="bg-[#14201b] px-4 pb-3 pt-3.5">
+    <View className="overflow-hidden rounded-3xl border border-line bg-surface" style={shadow.card}>
+      <View className="bg-[#101915] px-4 pb-3 pt-3.5">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-2">
             <LiveDot color={on ? '#4ade80' : '#6b7a73'} />
@@ -69,12 +71,12 @@ export function LiveFeed() {
                 <FoodTile name={a.itemName} category={a.category} size={34} />
                 <View className="flex-1">
                   <Text numberOfLines={1} className="text-sm text-ink">
-                    <Text className="font-semibold" style={{ color: v.color }}>{v.text}: </Text>
+                    <Text className="font-semibold" style={{ color: c[v.color] }}>{v.text}: </Text>
                     {displayName(a.itemName)}
                   </Text>
                   <Text className="text-xs text-mute">{timeAgo(a.at, now.getTime())} · {a.via}</Text>
                 </View>
-                <MaterialCommunityIcons name={v.icon} size={16} color={v.color} />
+                <MaterialCommunityIcons name={v.icon} size={16} color={c[v.color]} />
               </View>
             </FadeIn>
           )

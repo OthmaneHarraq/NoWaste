@@ -7,13 +7,15 @@
 //                                                     the same item followed: it came back)
 //   "out" event, grace over / manual                → consumed, or expired if it left the
 //                                                     fridge after its date (= wasted)
-//   user's explicit choice (Mark used / Thrown away) → kept in `overrides`
+//   user's explicit choice (Mark used / Thrown away) → events.disposition
+//                                                     ('composted' = thrown_away + composted)
 //
-// Location: the category's fridge spot, unless the user moved the item to the freezer
-// (kept in `moves`, per device, until the schema has a location column). Freezer items
-// use the freezer estimate from ./expiration.ts; fridge items use expires_on when
-// the catalog knew the food, else the fridge estimate. A date someone set by hand (or
-// read off the package) after the last freezer move always wins.
+// Location: inventory.location / events.location, NULL meaning the category's usual fridge
+// spot. Freezer items always use the freezer estimate from ./expiration.ts; items that
+// came out of the freezer (thawed_at) restart the fridge estimate from then; other fridge
+// items use expires_on when the catalog knew the food, else the fridge estimate.
+// A date someone set by hand (or read off the package) after the last thaw wins over the
+// thaw estimate. Freezer items always use the freezer estimate.
 
 import type { FridgeEvent, InventoryItem } from '@/types/db'
 import { categorize, defaultLocation } from './categories'
@@ -22,12 +24,6 @@ import { estimateExpiry } from './expiration'
 import type { ActivityEntry, FoodCategory, FridgeItem, FridgeSnapshot } from './types'
 
 export type InventoryRow = InventoryItem & { foods: { category: string | null } | null }
-
-/** eventId → what the user said happened to that item. */
-export type Overrides = Record<string, 'consumed' | 'thrown_away'>
-
-/** inventory id → where the user put it and when. */
-export type Moves = Record<string, { where: 'freezer' | 'fridge'; at: string }>
 
 const GRACE_MS = PENDING_GRACE_MINUTES * 60_000
 
@@ -48,35 +44,30 @@ export function buildSnapshot(args: {
   events: FridgeEvent[]
   /** food name (lowercase) → catalog category */
   catalog: Map<string, string | null>
-  overrides: Overrides
-  moves?: Moves
   now?: number
 }): FridgeSnapshot {
-  const { inventory, events, catalog, overrides, moves = {} } = args
+  const { inventory, events, catalog } = args
   const now = args.now ?? Date.now()
   const categoryOf = (name: string, dbCategory?: string | null): FoodCategory =>
     categorize(dbCategory ?? catalog.get(name.toLowerCase()), name)
 
   const items: FridgeItem[] = inventory.map(row => {
     const category = categoryOf(row.name, row.foods?.category)
-    const move = moves[row.id]
-    const frozen = move?.where === 'freezer'
-    // Someone set the date by hand after the last freezer move → trust them over the estimate
-    const datedAfterMove = !!move && !!row.expires_on && new Date(row.updated_at).getTime() > new Date(move.at).getTime()
+    const frozen = row.location === 'freezer'
+    // Set by a person after it thawed (set_location stamps updated_at = thawed_at) → trust it
+    const handDated = !!row.thawed_at && !!row.expires_on && new Date(row.updated_at).getTime() > new Date(row.thawed_at).getTime() + 1000
     return {
       id: row.id,
       name: row.name,
       category,
       source: null,
       quantity: row.quantity,
-      location: frozen ? 'freezer' : defaultLocation(category),
+      location: row.location ?? defaultLocation(category),
       added_at: row.added_at,
-      expires_at: datedAfterMove
-        ? dateToIso(row.expires_on)
-        : frozen
+      expires_at: frozen
         ? estimateExpiry(category, 'freezer', row.added_at)
-        : move // back out of the freezer: thawing started when it moved
-          ? estimateExpiry(category, 'fridge', move.at)
+        : row.thawed_at && !handDated // back out of the freezer: thawing started when it moved
+          ? estimateExpiry(category, 'fridge', row.thawed_at)
           : dateToIso(row.expires_on) ?? estimateExpiry(category, 'fridge', row.added_at),
       status: 'in_fridge',
       removed_at: null,
@@ -131,27 +122,33 @@ export function buildSnapshot(args: {
       continue
     }
 
-    const override = overrides[e.id]
-    const pending = e.source === 'camera' && !override && now - time(e) < GRACE_MS && !returnedBy.has(e.id)
-    const leftExpired = !!e.expires_on && e.expires_on < localDate(e.created_at)
-    const resolved = override ?? (leftExpired ? 'expired' : 'consumed')
+    const override = e.disposition === 'composted' ? 'thrown_away' : e.disposition
+    const category = categoryOf(e.item_name)
     const lastIn = applied.filter(x => x.action === 'in' && sameItem(x, e) && time(x) <= time(e)).pop()
+    const addedAt = lastIn?.created_at ?? e.created_at
+    // expires_on is the catalog's fridge date; something taken from the freezer gets the freezer estimate.
+    const expiresAt = e.location === 'freezer' ? estimateExpiry(category, 'freezer', addedAt) : dateToIso(e.expires_on)
+    const pending = e.source === 'camera' && !override && now - time(e) < GRACE_MS && !returnedBy.has(e.id)
+    const leftExpired = e.location === 'freezer'
+      ? expiresAt! < e.created_at
+      : !!e.expires_on && e.expires_on < localDate(e.created_at)
+    const resolved = override ?? (leftExpired ? 'expired' : 'consumed')
 
     if (!returnedBy.has(e.id)) {
-      const category = categoryOf(e.item_name)
       items.push({
         id: `out:${e.id}`,
         name: e.item_name,
         category,
         source: null,
         quantity: e.quantity,
-        location: defaultLocation(category),
-        added_at: lastIn?.created_at ?? e.created_at,
-        expires_at: dateToIso(e.expires_on),
+        location: e.location ?? defaultLocation(category),
+        added_at: addedAt,
+        expires_at: expiresAt,
         status: pending ? 'pending_removal' : resolved,
         removed_at: e.created_at,
         image_url: null,
         eventId: e.id,
+        ...(e.disposition === 'composted' && { composted: true }),
       })
     }
 

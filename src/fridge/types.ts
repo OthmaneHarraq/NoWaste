@@ -31,6 +31,8 @@ export type FridgeItem = {
   image_url: string | null
   /** Live mode: the camera "out" event behind a pending item, so Put back can undo it. */
   eventId?: string
+  /** thrown_away only: it went to compost, not the trash. Still wasted food, less methane. */
+  composted?: boolean
 }
 
 export type ActivityKind = 'added' | 'removed' | 'returned' | 'consumed' | 'expired' | 'thrown_away'
@@ -68,6 +70,8 @@ export interface FridgeSource {
   markUsed(item: FridgeItem): Promise<string | null>
   /** Confirmed it went in the bin. */
   markThrownAway(item: FridgeItem): Promise<string | null>
+  /** It went to compost, not the trash (also right after markThrownAway on the same item). */
+  markComposted(item: FridgeItem): Promise<string | null>
   /** Freezer ↔ fridge. Moving to the freezer re-estimates the date from added_at;
    *  moving out starts the fridge clock from now (it's thawing). */
   moveTo(item: FridgeItem, where: 'freezer' | 'fridge'): Promise<string | null>

@@ -8,7 +8,8 @@ import { expiryLabel, freshnessOf } from '../freshness'
 import { useFridge } from '../FridgeProvider'
 import type { FridgeItem } from '../types'
 import { FoodTile } from './FoodShape'
-import { FRESHNESS, FreshnessChip } from './visuals'
+import { FreshnessChip, useFreshHex } from './visuals'
+import { useTheme } from '@/ui/ThemeProvider'
 import { ExpiryEditor } from './ExpiryEditor'
 
 export const CARD_MIN_WIDTH = 164
@@ -19,7 +20,8 @@ export function ItemCard({ item, index = 0, width = CARD_MIN_WIDTH }: { item: Fr
   const { now, markUsed, markThrownAway, putBack, moveTo } = useFridge()
   const [editingDate, setEditingDate] = useState(false)
   const freshness = freshnessOf(item, now)
-  const f = FRESHNESS[freshness]
+  const hex = useFreshHex()
+  const { c } = useTheme()
   const pending = item.status === 'pending_removal'
   const frozen = item.location === 'freezer'
   const minsLeft = pending && item.removed_at
@@ -28,12 +30,12 @@ export function ItemCard({ item, index = 0, width = CARD_MIN_WIDTH }: { item: Fr
 
   return (
     <FadeIn delay={Math.min(index, 12) * 35} style={{ width }}>
-      <Pulse active={!pending && (freshness === 'soon' || freshness === 'expired')} color={f.hex}>
+      <Pulse active={!pending && (freshness === 'soon' || freshness === 'expired')} color={hex(freshness)}>
         <View
-          className={`overflow-hidden rounded-2xl border bg-white ${pending ? 'border-dashed border-mute' : frozen ? 'border-ice-200' : 'border-line'}`}
+          className={`overflow-hidden rounded-2xl border bg-surface ${pending ? 'border-dashed border-mute' : frozen ? 'border-ice-200' : 'border-line'}`}
           style={[
             { minHeight: 176 },
-            pending ? { opacity: 0.78 } : { shadowColor: '#17251f', shadowOpacity: 0.07, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+            pending ? { opacity: 0.78 } : { shadowColor: '#000000', shadowOpacity: 0.07, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
           ]}
         >
           <View className="flex-1 gap-2 p-3">
@@ -41,7 +43,7 @@ export function ItemCard({ item, index = 0, width = CARD_MIN_WIDTH }: { item: Fr
               <View>
                 <FoodTile name={item.name} category={item.category} size={42} />
                 {frozen && (
-                  <View className="absolute -bottom-1 -right-1 h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-white bg-ice-500">
+                  <View className="absolute -bottom-1 -right-1 h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-surface bg-ice-500">
                     <MaterialCommunityIcons name="snowflake" size={10} color="#fff" />
                   </View>
                 )}
@@ -81,7 +83,7 @@ export function ItemCard({ item, index = 0, width = CARD_MIN_WIDTH }: { item: Fr
             {pending ? (
               <View className="gap-2">
                 <View className="flex-row items-center gap-1">
-                  <MaterialCommunityIcons name="timer-sand" size={13} color="#4c5d55" />
+                  <MaterialCommunityIcons name="timer-sand" size={13} color={c.textSoft} />
                   <Text className="text-xs font-medium text-ink-soft">Taken out · {minsLeft} min to decide</Text>
                 </View>
                 <View className="flex-row gap-1.5">
@@ -97,13 +99,13 @@ export function ItemCard({ item, index = 0, width = CARD_MIN_WIDTH }: { item: Fr
                 className="flex-row items-center gap-1 self-start active:opacity-70"
               >
                 <FreshnessChip freshness={freshness} label={expiryLabel(item, now)} />
-                <MaterialCommunityIcons name="pencil-outline" size={13} color="#8a9a93" />
+                <MaterialCommunityIcons name="pencil-outline" size={13} color={c.muted} />
               </Pressable>
             )}
           </View>
           <ExpiryEditor item={editingDate ? item : null} onClose={() => setEditingDate(false)} />
           {/* Freshness edge: reads at a glance from across the room. */}
-          <View className={`h-1.5 ${pending ? 'bg-line' : f.stripe}`} />
+          <View className="h-1.5" style={{ backgroundColor: pending ? c.border : hex(freshness) }} />
         </View>
       </Pulse>
     </FadeIn>
@@ -114,9 +116,9 @@ function SmallButton({ label, onPress, solid }: { label: string; onPress: () => 
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-1 items-center rounded-lg py-1.5 ${solid ? 'bg-ink active:opacity-80' : 'border border-line bg-white active:bg-frost'}`}
+      className={`flex-1 items-center rounded-lg py-1.5 ${solid ? 'bg-ink active:opacity-80' : 'border border-line bg-surface active:bg-frost'}`}
     >
-      <Text className={`text-xs font-semibold ${solid ? 'text-white' : 'text-ink'}`}>{label}</Text>
+      <Text className={`text-xs font-semibold ${solid ? 'text-on-ink' : 'text-ink'}`}>{label}</Text>
     </Pressable>
   )
 }
@@ -124,7 +126,7 @@ function SmallButton({ label, onPress, solid }: { label: string; onPress: () => 
 function IconButton({ icon, label, onPress }: { icon: 'check' | 'trash-can-outline' | 'snowflake' | 'fridge-outline'; label: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} accessibilityLabel={label} hitSlop={6} className="h-7 w-7 items-center justify-center rounded-full active:bg-frost">
-      <MaterialCommunityIcons name={icon} size={17} color="#8a9a93" />
+      <MaterialCommunityIcons name={icon} size={17} color={useTheme().c.muted} />
     </Pressable>
   )
 }

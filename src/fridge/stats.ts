@@ -61,3 +61,32 @@ export function weekOverWeek(history: FridgeItem[], now = new Date()): number | 
   if (prev === 0) return null
   return (last - prev) / prev
 }
+
+export type WastePatterns = {
+  days: number
+  saved: number
+  wasted: number
+  /** Most-wasted foods, worst first (at most 5). */
+  items: { name: string; category: FoodCategory; wasted: number; saved: number }[]
+  categories: { category: FoodCategory; count: number }[]
+}
+
+/** What keeps getting wasted over the last `days`: the input to purchasing insights. */
+export function wastePatterns(history: FridgeItem[], days = 30, now = new Date()): WastePatterns {
+  const since = dayStart(now).getTime() - (days - 1) * DAY
+  const recent = history.filter(i => i.removed_at && new Date(i.removed_at).getTime() >= since)
+  const byName = new Map<string, WastePatterns['items'][number]>()
+  for (const i of recent) {
+    const key = i.name.toLowerCase()
+    const row = byName.get(key) ?? { name: key, category: i.category, wasted: 0, saved: 0 }
+    if (isWasted(i)) row.wasted += i.quantity
+    else if (i.status === 'consumed') row.saved += i.quantity
+    byName.set(key, row)
+  }
+  const items = [...byName.values()]
+    .filter(r => r.wasted > 0)
+    .sort((a, b) => b.wasted - a.wasted || a.saved - b.saved || a.name.localeCompare(b.name))
+    .slice(0, 5)
+  const { saved, wasted } = totals(recent)
+  return { days, saved, wasted, items, categories: wastedByCategory(recent) }
+}
