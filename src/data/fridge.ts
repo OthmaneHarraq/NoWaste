@@ -48,6 +48,19 @@ export async function correctEvent(eventId: string, itemName: string, action?: '
   return { data, error: error?.message ?? null }
 }
 
+/**
+ * Set (or clear, with null) an item's expiry date, 'YYYY-MM-DD'. Bumps updated_at so the
+ * dashboard knows a person chose this date after the last thaw (it then wins over the thaw
+ * estimate; freezer items always use the freezer estimate).
+ */
+export async function setExpiry(inventoryId: string, date: string | null): Promise<string | null> {
+  const { error } = await supabase
+    .from('inventory')
+    .update({ expires_on: date, updated_at: new Date().toISOString() })
+    .eq('id', inventoryId)
+  return error?.message ?? null
+}
+
 /** Move an inventory row. null = back to its usual spot for its category. */
 export async function setLocation(inventoryId: string, location: DbLocation | null): Promise<Result<InventoryItem>> {
   const { data, error } = await supabase.rpc('set_location', { p_inventory_id: inventoryId, p_location: location })

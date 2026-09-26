@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { correctEvent, recordEvent, setLocation, undoEvent, updateDisposition } from '@/data/fridge'
+import { correctEvent, recordEvent, setExpiry, setLocation, undoEvent, updateDisposition } from '@/data/fridge'
 import type { Disposition, FridgeEvent } from '@/types/db'
 import { buildSnapshot, type InventoryRow } from './adapter'
 import type { FridgeItem, FridgeSnapshot, FridgeSource } from './types'
@@ -133,6 +133,17 @@ export function createLiveSource(householdId: string): FridgeSource {
         emit()
       }
       return null
+    },
+
+    async setExpiry(item, date) {
+      if (item.status !== 'in_fridge') return 'Only items in the fridge have a date to change'
+      // Show it straight away; Realtime then confirms with the saved row
+      const now = new Date().toISOString()
+      inventory = inventory.map(r => (r.id === item.id ? { ...r, expires_on: date, updated_at: now } : r))
+      emit()
+      const error = await setExpiry(item.id, date)
+      if (error) load().catch(() => {})
+      return error
     },
 
     async putBack(item) {

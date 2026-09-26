@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { FadeIn, Pulse } from '@/ui/motion'
@@ -9,6 +10,7 @@ import type { FridgeItem } from '../types'
 import { FoodTile } from './FoodShape'
 import { FreshnessChip, useFreshHex } from './visuals'
 import { useTheme } from '@/ui/ThemeProvider'
+import { ExpiryEditor } from './ExpiryEditor'
 
 export const CARD_MIN_WIDTH = 164
 export const CARD_MIN_WIDTH_PHONE = 146
@@ -16,6 +18,7 @@ export const CARD_MIN_WIDTH_PHONE = 146
 /** One item sitting on a shelf. Pending-removal items show as a ghost with Put back / Finished. */
 export function ItemCard({ item, index = 0, width = CARD_MIN_WIDTH }: { item: FridgeItem; index?: number; width?: number }) {
   const { now, markUsed, markThrownAway, putBack, moveTo } = useFridge()
+  const [editingDate, setEditingDate] = useState(false)
   const freshness = freshnessOf(item, now)
   const hex = useFreshHex()
   const { c } = useTheme()
@@ -89,9 +92,18 @@ export function ItemCard({ item, index = 0, width = CARD_MIN_WIDTH }: { item: Fr
                 </View>
               </View>
             ) : (
-              <FreshnessChip freshness={freshness} label={expiryLabel(item, now)} />
+              // Tap the date to change it
+              <Pressable
+                onPress={() => setEditingDate(true)}
+                accessibilityLabel={`Change the expiry date of ${item.name}`}
+                className="flex-row items-center gap-1 self-start active:opacity-70"
+              >
+                <FreshnessChip freshness={freshness} label={expiryLabel(item, now)} />
+                <MaterialCommunityIcons name="pencil-outline" size={13} color={c.muted} />
+              </Pressable>
             )}
           </View>
+          <ExpiryEditor item={editingDate ? item : null} onClose={() => setEditingDate(false)} />
           {/* Freshness edge: reads at a glance from across the room. */}
           <View className="h-1.5" style={{ backgroundColor: pending ? c.border : hex(freshness) }} />
         </View>

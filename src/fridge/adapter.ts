@@ -14,6 +14,8 @@
 // spot. Freezer items always use the freezer estimate from ./expiration.ts; items that
 // came out of the freezer (thawed_at) restart the fridge estimate from then; other fridge
 // items use expires_on when the catalog knew the food, else the fridge estimate.
+// A date someone set by hand (or read off the package) after the last thaw wins over the
+// thaw estimate. Freezer items always use the freezer estimate.
 
 import type { FridgeEvent, InventoryItem } from '@/types/db'
 import { categorize, defaultLocation } from './categories'
@@ -52,6 +54,8 @@ export function buildSnapshot(args: {
   const items: FridgeItem[] = inventory.map(row => {
     const category = categoryOf(row.name, row.foods?.category)
     const frozen = row.location === 'freezer'
+    // Set by a person after it thawed (set_location stamps updated_at = thawed_at) → trust it
+    const handDated = !!row.thawed_at && !!row.expires_on && new Date(row.updated_at).getTime() > new Date(row.thawed_at).getTime() + 1000
     return {
       id: row.id,
       name: row.name,
@@ -62,7 +66,7 @@ export function buildSnapshot(args: {
       added_at: row.added_at,
       expires_at: frozen
         ? estimateExpiry(category, 'freezer', row.added_at)
-        : row.thawed_at // back out of the freezer: thawing started when it moved
+        : row.thawed_at && !handDated // back out of the freezer: thawing started when it moved
           ? estimateExpiry(category, 'fridge', row.thawed_at)
           : dateToIso(row.expires_on) ?? estimateExpiry(category, 'fridge', row.added_at),
       status: 'in_fridge',

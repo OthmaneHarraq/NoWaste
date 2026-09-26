@@ -78,6 +78,11 @@ export default function TabsLayout() {
           <Tabs.Screen name="todo" options={{ title: 'To do', tabBarIcon: icon('checkbox') }} />
           <Tabs.Screen name="activity" options={{ title: 'Activity', tabBarIcon: icon('time') }} />
           <Tabs.Screen name="impact" options={{ title: 'Impact', tabBarIcon: icon('leaf') }} />
+          {/* Scan: phone only (the Camera tab has its own barcode scanner on a computer); needs a real household. */}
+          <Tabs.Screen
+            name="scan"
+            options={{ title: 'Scan', tabBarIcon: icon('barcode'), href: USE_MOCK_DATA || Platform.OS === 'web' ? null : undefined }}
+          />
           {/* Camera + Settings need a real household; hidden in mock mode. */}
           <Tabs.Screen name="camera" options={{ title: 'Camera', tabBarIcon: icon('camera'), href: USE_MOCK_DATA ? null : undefined }} />
           <Tabs.Screen name="settings" options={{ title: 'Settings', tabBarIcon: icon('settings'), href: USE_MOCK_DATA ? null : undefined }} />
