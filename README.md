@@ -2,7 +2,7 @@
 
 A camera beside the fridge sees what goes in and out, AI identifies it, and everyone in the household shares a live inventory with expiry warnings, so food gets eaten instead of thrown away.
 
-**Stack:** Expo (React Native + web) · Expo Router · Supabase (auth, Postgres, realtime, Edge Functions) · Claude vision API
+**Stack:** Expo (React Native + web) · Expo Router · Tailwind (Uniwind) · Supabase (auth, Postgres, realtime, Edge Functions) · Claude vision API
 
 ---
 
@@ -16,6 +16,7 @@ A camera beside the fridge sees what goes in and out, AI identifies it, and ever
    npm install
    ```
 3. Copy `.env.example` to `.env` and paste in the Supabase URL and anon key (ask in the group chat).
+   Set `EXPO_PUBLIC_USE_MOCK_DATA=true` to skip all of that and run on demo data (see [Dashboard](#dashboard-web--tablet)).
 4. Run it:
    ```bash
    npx expo start
@@ -40,7 +41,7 @@ A camera beside the fridge sees what goes in and out, AI identifies it, and ever
 |---|---|---|
 | Camera device (motion detection, frame capture) | `src/app/(tabs)/camera.tsx`, `src/camera/` | _name_ |
 | AI backend (vision model, rate limits) | `supabase/functions/detect-items/` | _name_ |
-| Phone app (inventory, expiring, activity/fix UI) | `src/app/(tabs)/index.tsx`, `activity.tsx`, `src/data/` | _name_ |
+| Phone app / dashboard (inventory, expiring, activity/fix UI, impact) | `src/app/(tabs)/index.tsx`, `activity.tsx`, `impact.tsx`, `src/fridge/`, `src/data/` | _name_ |
 | Accounts, households & demo | `src/auth/`, `src/household/`, `settings.tsx` | _name_ |
 | Database schema | `supabase/migrations/` | whoever changes it, via PR |
 
@@ -90,20 +91,106 @@ src/
   app/                 screens (Expo Router: every file is a route)
     _layout.tsx        providers
     (tabs)/_layout.tsx sign-in gate → fridge gate → tab bar
-    (tabs)/index.tsx   Fridge (inventory)
+    (tabs)/index.tsx   Fridge dashboard (shelves, Action needed, camera feed)
     (tabs)/activity.tsx
+    (tabs)/impact.tsx  saved vs wasted stats
     (tabs)/camera.tsx
     (tabs)/settings.tsx
   auth/                login system (see src/auth/README.md)
   household/           create / join fridge, useHousehold()
   data/fridge.ts       database calls + live hooks
+  fridge/              dashboard data layer + components (see "Dashboard")
+    types.ts           the dashboard's data contract
+    adapter.ts         real tables → contract (the one file to change if the schema moves)
+    liveSource.ts      Supabase queries + Realtime
+    mockSource.ts      demo data + simulated camera
+    FridgeProvider.tsx useFridge(), expiry alerts
   lib/supabase.ts      Supabase client
   types/db.ts          table row types
-  ui/theme.ts          shared colors
+  ui/theme.ts          shared colors (Tailwind tokens live in src/global.css)
+  global.css           Tailwind (Uniwind) entry + color tokens
 supabase/
   migrations/          SQL schema
   functions/detect-items/  AI Edge Function (Deno)
 ```
+
+## Dashboard (web + tablet)
+
+The same Expo app, laid out for a laptop/monitor on stage: tab bar becomes a sidebar
+above 900px wide, and the Fridge screen goes two-column above ~1260px.
+
+| Screen | What it shows |
+|---|---|
+| **Fridge** | Items on "shelves", colour-coded fresh / use within 2 days / expired; filter by category, sort by shelf or expiry. Items the camera saw leave sit as dashed "taken out" cards until they come back or the grace period ends. |
+| **Action needed** (on Fridge) | Only things expiring within 2 days or already expired, with **Mark as used** / **Thrown away**. |
+| **Camera feed** (on Fridge) | Latest detections from the same realtime stream. |
+| **Activity** | Timeline grouped by day, with Undo / Fix. |
+| **Impact** | Waste avoided %, waste-free streak, saved vs wasted per day, most-wasted categories. |
+
+Alerts: in-app toasts when something crosses "expiring soon" or "expired", on load and live.
+On web, the **Alerts** button in the header opts in to browser notifications for expired food.
+
+### Run it
+
+```bash
+npm install
+cp .env.example .env
+npx expo start --web          # or press w in `npx expo start`
+```
+
+**Demo data (no Supabase, no sign-in):** in `.env` set `EXPO_PUBLIC_USE_MOCK_DATA=true`.
+You get a seeded fridge (every category, 2 items expiring, 1 expired, 2 "taken out"), three
+weeks of history for the Impact page, and a fake camera that adds/removes something every
+~25 s (Pause it on the camera card).
+
+**Live:** set `EXPO_PUBLIC_USE_MOCK_DATA=false` plus the Supabase URL and key, restart with
+`npx expo start --clear` (env vars are baked in at bundle time), sign in and create or join a fridge.
+The dashboard subscribes to Realtime on `inventory` and `events`, so anything the camera logs
+shows up within a second, with no refresh. Use **Camera → Simulate a detection** from a phone to test.
+
+`EXPO_PUBLIC_PENDING_GRACE_MINUTES` (default 10) sets how long a taken-out item waits
+before counting as used.
+
+Styling is Tailwind via [Uniwind](https://uniwind.dev) (`className` on React Native components,
+works on web and native). `metro.config.js` has a one-line workaround for a Uniwind web bug.
+
+### Data contract (backend team: tell us if this doesn't match)
+
+Every screen reads one shape, `FridgeItem` in `src/fridge/types.ts`:
+
+| Field | Type | Where it comes from today |
+|---|---|---|
+| `id` | uuid | `inventory.id` (or `out:<event id>` for items that left) |
+| `name` | text | `inventory.name` / `events.item_name` |
+| `category` | `meat \| dairy \| produce \| takeout \| beverage \| condiment \| other` | `foods.category` via `food_id` / name, mapped (seafood→meat, prepared→takeout, drinks→beverage); else guessed from the name |
+| `source` | text, null | **not in schema**: restaurant for takeout, brand for packaged goods |
+| `quantity` | int | `inventory.quantity` |
+| `added_at` | timestamptz | `inventory.added_at` |
+| `expires_at` | timestamptz, null | `inventory.expires_on` (date) |
+| `status` | `in_fridge \| pending_removal \| consumed \| expired \| thrown_away` | **derived**, see below |
+| `removed_at` | timestamptz, null | time of the `out` event |
+| `image_url` | text, null | **not in schema**: camera thumbnail |
+
+How status is derived from `events` (all in `src/fridge/adapter.ts`):
+
+- row in `inventory` → `in_fridge`
+- camera `out` event younger than the grace period → `pending_removal`; if an `in` of the same
+  item follows within the grace period it's treated as **put back**
+- `out` older than that (or manual) → `consumed`, or `expired` if `events.expires_on` was before
+  the day it left (that's what the Impact page counts as wasted)
+- the user's explicit **Mark as used / Thrown away** choice is remembered per device
+  (AsyncStorage), because the schema has nowhere to store it
+
+**Would make the dashboard more accurate if the backend adds them** (no changes made to the
+schema from the frontend):
+1. `source` and `image_url` on `inventory`/`events` (the AI already sees the takeout bag / brand).
+2. A way to record the outcome of an `out` (e.g. `events.outcome in ('consumed','thrown_away')`),
+   so waste stats sync across devices instead of being inferred.
+3. `record_event('in')` for something taken out a minute ago currently gives it a fresh expiry
+   (`current_date + shelf_days`); restoring the old `expires_on` would keep "put back" honest.
+
+If a column is renamed, update `src/fridge/adapter.ts` (mapping) and the two queries in
+`src/fridge/liveSource.ts`; nothing else touches table rows.
 
 ## Privacy
 

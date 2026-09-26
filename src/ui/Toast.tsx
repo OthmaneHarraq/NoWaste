@@ -52,7 +52,6 @@ function ToastCard({ toast, onDone }: { toast: Toast; onDone: () => void }) {
     Animated.spring(anim, { toValue: 1, useNativeDriver: true, friction: 8, tension: 70 }).start()
     const timer = setTimeout(close, toast.tone === 'expired' ? 9000 : 6000)
     return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function close() {
