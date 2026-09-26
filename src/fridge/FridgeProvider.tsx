@@ -3,6 +3,7 @@ import { useToast } from '@/ui/Toast'
 import { displayName } from './categories'
 import { USE_MOCK_DATA } from './config'
 import { estimateExpiry } from './expiration'
+import { compostable } from './footprint'
 import { expiryLabel, freshnessOf, isCurrent, needsAction, type Freshness } from './freshness'
 import { notify } from './notifications'
 import { createLiveSource } from './liveSource'
@@ -58,7 +59,7 @@ export function FridgeProvider({ householdId, children }: { householdId: string;
   useExpiryAlerts(current, now, snapshot !== null)
 
   // Wrap every action so a failure always surfaces, and success gets a little feedback.
-  async function run(p: Promise<string | null>, success?: { title: string; body?: string; tone?: 'fresh' | 'info' }) {
+  async function run(p: Promise<string | null>, success?: { title: string; body?: string; tone?: 'fresh' | 'info'; action?: { label: string; onPress: () => void } }) {
     const error = await p
     if (error) toast({ tone: 'expired', title: 'That didn’t work', body: error })
     else if (success) toast({ tone: success.tone ?? 'fresh', ...success })
@@ -77,7 +78,18 @@ export function FridgeProvider({ householdId, children }: { householdId: string;
       await run(source.markUsed(item), { title: `${displayName(item.name)} saved from the bin`, body: 'Counted toward your waste avoided.' })
     },
     markThrownAway: async item => {
-      await run(source.markThrownAway(item), { tone: 'info', title: `${displayName(item.name)} tossed`, body: 'Logged so the stats stay honest.' })
+      const compost = compostable(item.category)
+      const composted = () => { run(source.markComposted(item), { title: `${displayName(item.name)} composted`, body: 'Less methane than a landfill. Counted on your Impact page.' }) }
+      await run(source.markThrownAway(item), compost === 'no'
+        ? { tone: 'info', title: `${displayName(item.name)} tossed`, body: 'Logged so the stats stay honest.' }
+        : {
+            tone: 'info',
+            title: `${displayName(item.name)} tossed`,
+            body: compost === 'yes'
+              ? 'This could go in compost instead of the trash.'
+              : 'If your city collects food scraps, this can go there instead of the trash.',
+            action: { label: 'I composted it', onPress: composted },
+          })
     },
     putBack: async item => {
       await run(source.putBack(item), { tone: 'info', title: `${displayName(item.name)} is back in the fridge` })

@@ -8,6 +8,8 @@ import { FoodShape } from '@/fridge/components/FoodShape'
 import type { FridgeItem } from '@/fridge/types'
 import { dailySeries, totals, wastedByCategory, wasteFreeStreak, weekOverWeek } from '@/fridge/stats'
 import { CategoryBars, CountUp, Legend, SAVED, SavedWastedChart, WASTED } from '@/fridge/components/charts'
+import { FootprintTiles } from '@/fridge/components/FootprintTiles'
+import { InsightsCard } from '@/fridge/components/InsightsCard'
 import { FadeIn } from '@/ui/motion'
 import { shadow } from '@/ui/theme'
 import { useTheme } from '@/ui/ThemeProvider'
@@ -87,6 +89,8 @@ export default function ImpactScreen() {
             </Tile>
           </View>
 
+          <FootprintTiles items={recent} />
+
           <Card
             title="Saved vs wasted"
             subtitle="Items leaving the fridge each day, last 14 days"
@@ -104,6 +108,7 @@ export default function ImpactScreen() {
         </View>
 
         <View className="gap-5" style={wide ? { flex: 1 } : undefined}>
+          <InsightsCard />
           <Card title="What gets wasted most" subtitle="Items wasted by category, last 30 days">
             <CategoryBars data={byCategory} />
             {worst && (
@@ -158,7 +163,7 @@ function Waffle({ items }: { items: FridgeItem[] }) {
 
 /** The foods most often eaten in time, drawn with the same illustrations as the Fridge view. */
 function RescuedCard({ items }: { items: FridgeItem[] }) {
-  const { c, dark } = useTheme()
+  const { dark } = useTheme()
   const tally = new Map<string, { item: FridgeItem; n: number }>()
   for (const i of items) {
     if (i.status !== 'consumed') continue

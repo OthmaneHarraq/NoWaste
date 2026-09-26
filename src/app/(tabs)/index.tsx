@@ -9,7 +9,8 @@ import { ActionNeededPanel } from '@/fridge/components/ActionNeededPanel'
 import { FridgeShelves, type SortMode } from '@/fridge/components/FridgeShelves'
 import { FridgeView } from '@/fridge/components/FridgeView'
 import { LiveFeed } from '@/fridge/components/LiveFeed'
-import { FRESHNESS, useFreshHex, useIce } from '@/fridge/components/visuals'
+import { RecipesCard } from '@/fridge/components/RecipesCard'
+import { useFreshHex, useIce } from '@/fridge/components/visuals'
 import { useTheme } from '@/ui/ThemeProvider'
 
 // OWNER: phone app team. The fridge dashboard: what's inside, what to use first, and what
@@ -131,6 +132,7 @@ export default function FridgeScreen() {
         </View>
         <ScrollView style={{ width: 360, flexGrow: 0 }} contentContainerStyle={{ gap: 20, paddingBottom: 8 }} showsVerticalScrollIndicator={false}>
           <ActionNeededPanel />
+          <RecipesCard />
           <LiveFeed />
         </ScrollView>
       </View>
@@ -143,6 +145,7 @@ export default function FridgeScreen() {
     <ScrollView className={`flex-1 bg-paper ${DOTS}`} contentContainerStyle={{ padding: phone ? 14 : 24, paddingBottom: 48 }}>
       <View className="gap-5">
         <ActionNeededPanel />
+        <RecipesCard />
         <View className="gap-4">
           {header}
           {filters}

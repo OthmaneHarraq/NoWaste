@@ -5,6 +5,7 @@
 import { categorize, defaultLocation } from './categories'
 import { PENDING_GRACE_MINUTES } from './config'
 import { estimateExpiry } from './expiration'
+import { compostable } from './footprint'
 import { daysUntil } from './freshness'
 import type { ActivityEntry, ActivityKind, FoodCategory, FridgeItem, FridgeLocation, FridgeSnapshot, FridgeSource } from './types'
 
@@ -136,6 +137,9 @@ function seedHistory(): FridgeItem[] {
       })
     }
   }
+  // Every other compostable thing that got binned went to compost (no rand(): keeps the history stable).
+  let n = 0
+  for (const i of out) if (i.status === 'thrown_away' && compostable(i.category) !== 'no' && n++ % 2 === 0) i.composted = true
   return out
 }
 
@@ -285,6 +289,15 @@ export function createMockSource(): FridgeSource {
         i.expires_at = where === 'freezer'
           ? estimateExpiry(i.category, 'freezer', i.added_at)
           : estimateExpiry(i.category, 'fridge', new Date())
+      }
+      return done()
+    },
+
+    markComposted(item) {
+      const i = find(item.id)
+      if (i) {
+        if (i.status !== 'thrown_away') resolve(i, 'thrown_away', 'manual')
+        i.composted = true
       }
       return done()
     },

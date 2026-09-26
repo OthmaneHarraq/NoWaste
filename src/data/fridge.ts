@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { FridgeEvent, InventoryItem } from '@/types/db'
+import type { DbLocation, Disposition, FridgeEvent, InventoryItem } from '@/types/db'
 
 // ---- Actions (wrap the SQL functions in the schema) ----------------------
 
@@ -14,6 +14,10 @@ export async function recordEvent(args: {
   confidence?: number
   quantity?: number
   source?: 'camera' | 'manual'
+  /** 'in': where it goes (omit for its usual spot). 'out': take from here first. */
+  location?: DbLocation
+  /** 'out' only, when it's already known whether it was eaten or binned. */
+  disposition?: Disposition
 }): Promise<Result<FridgeEvent>> {
   const { data, error } = await supabase.rpc('record_event', {
     p_household_id: args.householdId,
@@ -22,6 +26,9 @@ export async function recordEvent(args: {
     p_confidence: args.confidence ?? null,
     p_source: args.source ?? 'manual',
     p_quantity: args.quantity ?? 1,
+    // Only sent when set, so plain in/out calls don't depend on the newer signature.
+    ...(args.location && { p_location: args.location }),
+    ...(args.disposition && { p_disposition: args.disposition }),
   })
   return { data, error: error?.message ?? null }
 }
@@ -38,6 +45,18 @@ export async function correctEvent(eventId: string, itemName: string, action?: '
     p_item_name: itemName,
     p_action: action ?? null,
   })
+  return { data, error: error?.message ?? null }
+}
+
+/** Move an inventory row. null = back to its usual spot for its category. */
+export async function setLocation(inventoryId: string, location: DbLocation | null): Promise<Result<InventoryItem>> {
+  const { data, error } = await supabase.rpc('set_location', { p_inventory_id: inventoryId, p_location: location })
+  return { data, error: error?.message ?? null }
+}
+
+/** Say whether something that already left was eaten or binned (null = unknown again). */
+export async function updateDisposition(eventId: string, disposition: Disposition | null): Promise<Result<FridgeEvent>> {
+  const { data, error } = await supabase.rpc('update_disposition', { p_event_id: eventId, p_disposition: disposition })
   return { data, error: error?.message ?? null }
 }
 
