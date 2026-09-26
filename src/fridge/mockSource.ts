@@ -206,8 +206,12 @@ export function createMockSource(): FridgeSource {
     } else {
       const [name, category, source] = CAMERA_POOL[Math.floor(Math.random() * CAMERA_POOL.length)]
       const item = makeItem(name, category, source, new Date().toISOString())
-      items.push(item)
-      log(item, 'added', 'camera')
+      // Same thing, same spot, same date → one item ×2, like record_event merges rows.
+      const same = items.find(i =>
+        i.status === 'in_fridge' && i.name === name && i.location === item.location && i.expires_at === item.expires_at)
+      if (same) same.quantity += 1
+      else items.push(item)
+      log({ ...(same ?? item), quantity: 1 }, 'added', 'camera')
     }
   }
 

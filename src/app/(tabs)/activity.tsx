@@ -7,6 +7,7 @@ import { USE_MOCK_DATA } from '@/fridge/config'
 import { CategoryIcon } from '@/fridge/components/visuals'
 import type { ActivityEntry, ActivityKind } from '@/fridge/types'
 import { FadeIn } from '@/ui/motion'
+import { shadow } from '@/ui/theme'
 
 // OWNER: phone app team. Everything that went in or out, grouped by day, newest first,
 // with one-tap Undo and Fix. Fixing a name teaches the household an alias.
@@ -127,7 +128,7 @@ function TimelineRow({ entry, first, last, onUndo, onFix }: {
           <View className={`w-0.5 flex-1 ${last ? 'bg-transparent' : 'bg-line'}`} />
         </View>
 
-        <View className={`my-1.5 flex-1 flex-row items-center gap-3 rounded-2xl border border-line bg-white px-3 py-2.5 ${entry.undone ? 'opacity-45' : ''}`}>
+        <View className={`my-1.5 flex-1 flex-row items-center gap-3 rounded-2xl border border-line bg-white px-3 py-2.5 ${entry.undone ? 'opacity-45' : ''}`} style={shadow.card}>
           <CategoryIcon category={entry.category} size={34} />
           <View className="flex-1">
             <Text className={`text-[15px] text-ink ${entry.undone ? 'line-through' : ''}`}>

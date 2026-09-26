@@ -13,6 +13,17 @@ export const FRESHNESS = {
   unknown: { label: 'No date',       hex: '#8a9a93', text: 'text-ink-soft',    chip: 'bg-frost border-line',             stripe: 'bg-line' },
 } satisfies Record<Freshness, unknown>
 
+/** Three tones per freshness stage for the Fridge view's illustrated items (same hues as above). */
+export const FRESHNESS_TONES: Record<Freshness, { base: string; shade: string; light: string }> = {
+  fresh:   { base: '#3aa566', shade: '#1b653b', light: '#d5eedc' },
+  soon:    { base: '#e8a12a', shade: '#8a5806', light: '#fcebc6' },
+  expired: { base: '#dc5445', shade: '#8a2419', light: '#f8d3ce' },
+  unknown: { base: '#a3b1ab', shade: '#5f6f68', light: '#e8eeeb' },
+}
+
+// Freezer accent, same values as the ice-* tokens in src/global.css. Blue = cold, never freshness.
+export const ICE = { bg: '#eaf3fa', soft: '#f1f7fc', line: '#cfe1ef', glass: '#bcd6ea', icon: '#5b8fb9', text: '#3f6a8f' }
+
 export function CategoryIcon({ category, size = 40 }: { category: FoodCategory; size?: number }) {
   const c = CATEGORIES[category]
   return (

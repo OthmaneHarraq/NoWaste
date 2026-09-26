@@ -6,6 +6,7 @@ import { CATEGORIES } from '@/fridge/categories'
 import { dailySeries, totals, wastedByCategory, wasteFreeStreak, weekOverWeek } from '@/fridge/stats'
 import { CategoryBars, CountUp, Legend, SAVED, SavedWastedChart, WASTED } from '@/fridge/components/charts'
 import { FadeIn } from '@/ui/motion'
+import { shadow } from '@/ui/theme'
 
 // OWNER: phone app team. The "is this working?" page: food saved vs wasted over time.
 export default function ImpactScreen() {
@@ -128,7 +129,7 @@ const TIPS: Record<string, string> = {
 function Card({ title, subtitle, right, children }: { title: string; subtitle: string; right?: ReactNode; children: ReactNode }) {
   return (
     <FadeIn delay={120}>
-      <View className="rounded-3xl border border-line bg-white p-5">
+      <View className="rounded-3xl border border-line bg-white p-5" style={shadow.card}>
         <View className="mb-4 flex-row items-start justify-between gap-3">
           <View className="flex-1">
             <Text className="text-[17px] font-bold text-ink">{title}</Text>
@@ -152,7 +153,7 @@ function Tile({ icon, iconColor, iconBg, label, delay, children }: {
 }) {
   return (
     <FadeIn delay={delay} style={{ flexGrow: 1, flexBasis: 170 }}>
-      <View className="gap-1 rounded-3xl border border-line bg-white p-4">
+      <View className="gap-1 rounded-3xl border border-line bg-white p-4" style={shadow.card}>
         <View className="mb-1 flex-row items-center gap-2">
           <View className="h-7 w-7 items-center justify-center rounded-full" style={{ backgroundColor: iconBg }}>
             <MaterialCommunityIcons name={icon} size={16} color={iconColor} />

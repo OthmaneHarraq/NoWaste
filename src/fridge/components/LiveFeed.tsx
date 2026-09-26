@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { FadeIn, LiveDot } from '@/ui/motion'
+import { shadow } from '@/ui/theme'
 import { displayName } from '../categories'
 import { timeAgo } from '../freshness'
 import { useFridge } from '../FridgeProvider'
@@ -24,7 +25,7 @@ export function LiveFeed() {
   const on = connection === 'live' || (connection === 'demo' && simulatedCamera !== false)
 
   return (
-    <View className="overflow-hidden rounded-3xl border border-line bg-white">
+    <View className="overflow-hidden rounded-3xl border border-line bg-white" style={shadow.card}>
       <View className="bg-[#14201b] px-4 pb-3 pt-3.5">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-2">

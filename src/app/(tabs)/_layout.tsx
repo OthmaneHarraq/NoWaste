@@ -7,6 +7,7 @@ import { FridgeProvider } from '@/fridge/FridgeProvider'
 import { USE_MOCK_DATA } from '@/fridge/config'
 import { HeaderStatus } from '@/fridge/components/HeaderStatus'
 import { ToastProvider } from '@/ui/Toast'
+import { Brand } from '@/ui/Brand'
 import { colors } from '@/ui/theme'
 
 type IconName = keyof typeof Ionicons.glyphMap
@@ -46,7 +47,7 @@ export default function TabsLayout() {
       <FridgeProvider householdId={householdId}>
         <Tabs
           screenOptions={{
-            headerTitle: fridgeName,
+            headerTitle: () => <Brand fridge={fridgeName} compact={width < 420} />,
             headerStyle: { backgroundColor: colors.surface, borderBottomColor: colors.border },
             headerTitleStyle: { color: colors.text, fontWeight: '700' },
             headerShadowVisible: false,
