@@ -1,117 +1,165 @@
 import { useState } from 'react'
-import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
-import { useHousehold } from '@/household'
-import { daysLeft, recordEvent, useInventory } from '@/data/fridge'
-import { colors } from '@/ui/theme'
-import type { InventoryItem } from '@/types/db'
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native'
+import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { useFridge } from '@/fridge/FridgeProvider'
+import { CATEGORIES, CATEGORY_ORDER } from '@/fridge/categories'
+import { freshnessOf } from '@/fridge/freshness'
+import type { FoodCategory } from '@/fridge/types'
+import { ActionNeededPanel } from '@/fridge/components/ActionNeededPanel'
+import { FridgeShelves, type SortMode } from '@/fridge/components/FridgeShelves'
+import { LiveFeed } from '@/fridge/components/LiveFeed'
 
-// OWNER: phone app team. What's in the fridge right now, soonest-expiring first.
-// Updates live when the camera (or anyone in the household) logs something.
+// OWNER: phone app team. The fridge dashboard: what's inside, what to use first, and what
+// the camera just saw. Updates live (Supabase Realtime) — no refresh needed.
 export default function FridgeScreen() {
-  const { household } = useHousehold()
-  const { items, loading, error } = useInventory(household?.id)
-  const [newItem, setNewItem] = useState('')
-  const [message, setMessage] = useState<string | null>(null)
+  const { current, loading, now } = useFridge()
+  const { width } = useWindowDimensions()
+  const [category, setCategory] = useState<FoodCategory | 'all'>('all')
+  const [sort, setSort] = useState<SortMode>('shelf')
 
-  async function addManually() {
-    if (!household || !newItem.trim()) return
-    const { error } = await recordEvent({ householdId: household.id, label: newItem, action: 'in' })
-    setMessage(error ?? null)
-    if (!error) setNewItem('')
+  // Sidebar tab bar eats ~200px on wide screens.
+  const twoColumn = width >= 1180
+
+  const visible = category === 'all' ? current : current.filter(i => i.category === category)
+  const counts = new Map<FoodCategory, number>()
+  for (const i of current) counts.set(i.category, (counts.get(i.category) ?? 0) + 1)
+  const fresh = current.filter(i => i.status === 'in_fridge' && freshnessOf(i, now) === 'fresh').length
+  const pending = current.filter(i => i.status === 'pending_removal').length
+
+  if (loading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-paper">
+        <ActivityIndicator color="#2f9e5b" />
+      </View>
+    )
   }
 
-  async function takeOut(item: InventoryItem) {
-    if (!household) return
-    const { error } = await recordEvent({ householdId: household.id, label: item.name, action: 'out' })
-    setMessage(error ?? null)
-  }
-
-  const expiringCount = items.filter(i => {
-    const d = daysLeft(i.expires_on)
-    return d !== null && d <= 2
-  }).length
-
-  return (
-    <View style={styles.container}>
-      {expiringCount > 0 && (
-        <View style={styles.alert}>
-          <Ionicons name="alert-circle" size={18} color={colors.warning} />
-          <Text style={styles.alertText}>
-            {expiringCount} item{expiringCount === 1 ? '' : 's'} expiring in the next 2 days
+  const fridge = (
+    <View className="gap-4">
+      <View className="flex-row flex-wrap items-end justify-between gap-3">
+        <View>
+          <Text className="text-[28px] font-extrabold tracking-tight text-ink">What’s in the fridge</Text>
+          <Text className="mt-0.5 text-sm text-ink-soft">
+            {current.length} items · {fresh} fresh{pending ? ` · ${pending} taken out` : ''}
           </Text>
         </View>
-      )}
-
-      <View style={styles.addRow}>
-        <TextInput
-          style={styles.input}
-          placeholder="Add an item by hand (e.g. milk)"
-          placeholderTextColor={colors.muted}
-          value={newItem}
-          onChangeText={setNewItem}
-          onSubmitEditing={addManually}
-          returnKeyType="done"
-        />
-        <TouchableOpacity style={styles.addButton} onPress={addManually}>
-          <Ionicons name="add" size={22} color="#fff" />
-        </TouchableOpacity>
+        <AddItem />
       </View>
-      {(message || error) && <Text style={styles.error}>{message || error}</Text>}
 
-      <FlatList
-        data={items}
-        keyExtractor={i => i.id}
-        contentContainerStyle={{ paddingBottom: 24 }}
-        ListEmptyComponent={
-          <Text style={styles.empty}>{loading ? 'Loading…' : 'The fridge is empty. Add something above or use the camera.'}</Text>
-        }
-        renderItem={({ item }) => <ItemRow item={item} onTakeOut={() => takeOut(item)} />}
-      />
+      <View className="flex-row flex-wrap items-center justify-between gap-3">
+        <View className="flex-1 flex-row flex-wrap gap-1.5" style={{ minWidth: 260 }}>
+          <Chip label="All" count={current.length} active={category === 'all'} onPress={() => setCategory('all')} />
+          {CATEGORY_ORDER.filter(c => counts.get(c)).map(c => (
+            <Chip key={c} label={CATEGORIES[c].label} icon={CATEGORIES[c].icon} color={CATEGORIES[c].color} count={counts.get(c)!} active={category === c} onPress={() => setCategory(category === c ? 'all' : c)} />
+          ))}
+        </View>
+        <Segmented value={sort} onChange={setSort} />
+      </View>
+
+      <FridgeShelves items={visible} sort={sort} filtered={category !== 'all'} />
+      <Legend />
     </View>
   )
-}
-
-function ItemRow({ item, onTakeOut }: { item: InventoryItem; onTakeOut: () => void }) {
-  const d = daysLeft(item.expires_on)
-  const badge =
-    d === null ? null
-    : d < 0 ? { text: 'Expired', fg: colors.danger, bg: colors.dangerLight }
-    : d === 0 ? { text: 'Today', fg: colors.danger, bg: colors.dangerLight }
-    : d <= 2 ? { text: `${d}d left`, fg: colors.warning, bg: colors.warningLight }
-    : { text: `${d}d left`, fg: colors.primary, bg: colors.primaryLight }
 
   return (
-    <View style={styles.row}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.name}>{item.name}</Text>
-        <Text style={styles.meta}>Qty {item.quantity}</Text>
-      </View>
-      {badge && (
-        <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-          <Text style={[styles.badgeText, { color: badge.fg }]}>{badge.text}</Text>
+    <ScrollView className="flex-1 bg-paper" contentContainerStyle={{ padding: width < 600 ? 14 : 24, paddingBottom: 48 }}>
+      {twoColumn ? (
+        <View className="flex-row items-start gap-6">
+          <View className="flex-1">{fridge}</View>
+          <View className="w-[360px] gap-5">
+            <ActionNeededPanel />
+            <LiveFeed />
+          </View>
+        </View>
+      ) : (
+        <View className="gap-5">
+          <ActionNeededPanel />
+          {fridge}
+          <LiveFeed />
         </View>
       )}
-      <TouchableOpacity onPress={onTakeOut} style={styles.outButton} accessibilityLabel={`Take out ${item.name}`}>
-        <Ionicons name="remove-circle-outline" size={24} color={colors.muted} />
-      </TouchableOpacity>
+    </ScrollView>
+  )
+}
+
+function AddItem() {
+  const { addItem } = useFridge()
+  const [name, setName] = useState('')
+  async function submit() {
+    if (!name.trim()) return
+    if (await addItem(name.trim())) setName('')
+  }
+  return (
+    <View className="flex-row items-center rounded-xl border border-line bg-white pl-3">
+      <MaterialCommunityIcons name="plus" size={16} color="#8a9a93" />
+      <TextInput
+        value={name}
+        onChangeText={setName}
+        onSubmitEditing={submit}
+        placeholder="Add by hand (e.g. milk)"
+        placeholderTextColor="#8a9a93"
+        returnKeyType="done"
+        className="w-48 px-2 py-2.5 text-sm text-ink"
+        style={{ outlineStyle: 'none' } as object}
+      />
+      <Pressable onPress={submit} className="m-1 rounded-lg bg-ink px-3 py-1.5 active:opacity-80">
+        <Text className="text-[13px] font-semibold text-white">Add</Text>
+      </Pressable>
     </View>
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: 16 },
-  alert: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.warningLight, padding: 12, borderRadius: 10, marginBottom: 12 },
-  alertText: { color: colors.text, fontWeight: '600' },
-  addRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  input: { flex: 1, backgroundColor: colors.surface, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, borderWidth: 1, borderColor: colors.border, color: colors.text },
-  addButton: { backgroundColor: colors.primary, borderRadius: 10, width: 48, alignItems: 'center', justifyContent: 'center' },
-  error: { color: colors.danger, marginBottom: 8 },
-  empty: { textAlign: 'center', color: colors.muted, marginTop: 40, paddingHorizontal: 24 },
-  row: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, padding: 14, marginTop: 8, gap: 10 },
-  name: { fontSize: 16, fontWeight: '600', color: colors.text, textTransform: 'capitalize' },
-  meta: { fontSize: 13, color: colors.muted, marginTop: 2 },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  badgeText: { fontSize: 12, fontWeight: '700' },
-  outButton: { padding: 2 },
-})
+function Chip({ label, count, active, onPress, icon, color }: {
+  label: string
+  count: number
+  active: boolean
+  onPress: () => void
+  icon?: keyof typeof MaterialCommunityIcons.glyphMap
+  color?: string
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${active ? 'border-ink bg-ink' : 'border-line bg-white active:bg-frost'}`}
+    >
+      {icon && <MaterialCommunityIcons name={icon} size={14} color={active ? '#fff' : color} />}
+      <Text className={`text-[13px] font-semibold ${active ? 'text-white' : 'text-ink'}`}>{label}</Text>
+      <Text className={`text-xs ${active ? 'text-[#b7c6bf]' : 'text-mute'}`}>{count}</Text>
+    </Pressable>
+  )
+}
+
+function Segmented({ value, onChange }: { value: SortMode; onChange: (v: SortMode) => void }) {
+  const options: { v: SortMode; label: string }[] = [{ v: 'shelf', label: 'By shelf' }, { v: 'expiry', label: 'By expiry' }]
+  return (
+    <View className="flex-row rounded-xl bg-[#e8eeeb] p-0.5">
+      {options.map(o => (
+        <Pressable key={o.v} onPress={() => onChange(o.v)} className={`rounded-[10px] px-3 py-1.5 ${value === o.v ? 'bg-white' : ''}`}>
+          <Text className={`text-[13px] font-semibold ${value === o.v ? 'text-ink' : 'text-ink-soft'}`}>{o.label}</Text>
+        </Pressable>
+      ))}
+    </View>
+  )
+}
+
+function Legend() {
+  const rows = [
+    { c: '#2f9e5b', t: 'Fresh' },
+    { c: '#e39a1b', t: 'Use within 2 days' },
+    { c: '#d9493a', t: 'Past its date' },
+  ]
+  return (
+    <View className="flex-row flex-wrap gap-4 px-1">
+      {rows.map(r => (
+        <View key={r.t} className="flex-row items-center gap-1.5">
+          <View style={{ width: 14, height: 4, borderRadius: 2, backgroundColor: r.c }} />
+          <Text className="text-xs text-ink-soft">{r.t}</Text>
+        </View>
+      ))}
+      <View className="flex-row items-center gap-1.5">
+        <View style={{ width: 14, height: 10, borderRadius: 3, borderWidth: 1, borderStyle: 'dashed', borderColor: '#8a9a93' }} />
+        <Text className="text-xs text-ink-soft">Taken out, waiting to see if it comes back</Text>
+      </View>
+    </View>
+  )
+}
