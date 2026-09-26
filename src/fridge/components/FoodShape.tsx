@@ -927,7 +927,7 @@ const MATCH: [RegExp, string][] = [
   [/ice cream|gelato|sorbet|popsicle/, 'iceCream'],
   [/cream cheese|sour cream|cottage/, 'creamCheese'],
   [/yogh?urt|kefir|skyr/, 'yogurt'],
-  [/cream soda|root beer|ginger ale|soda|cola|coke|sprite|seltzer|sparkling|\bbeer\b|lager|\bipa\b|iced coffee|cold brew|\bcan\b/, 'can'],
+  [/cream soda|root beer|ginger ale|soda|\bcola\b|\bcoke\b|sprite|seltzer|sparkling|\bbeer\b|lager|\bipa\b|iced coffee|cold brew|\bcan\b/, 'can'],
   [/kombucha/, 'kombucha'],
   [/wine|prosecco|champagne/, 'wine'],
   // Sauces, spreads, jars
@@ -945,6 +945,9 @@ const MATCH: [RegExp, string][] = [
   [/olive/, 'olives'],
   [/hummus|\bdip\b|tzatziki|guacamole/, 'hummus'],
   // Dishes and baked things
+  // Takeout dishes named after a fruit or a bake: before the fruit and cake rules
+  [/orange chicken|lemon chicken|general tso|sesame chicken|kung pao|sweet and sour/, 'pail'],
+  [/pot pie|shepherd|casserole|hot ?pot/, 'tub'],
   [/cake|cheesecake|\bpie\b|brownie|cupcake|muffin/, 'cake'],
   [/bread|bagel|tortilla|\bbuns?\b|toast|pita|naan|croissant/, 'bread'],
   [/dumpling|gyoza|pierogi|\bbao\b|wonton/, 'dumplings'],

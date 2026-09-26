@@ -79,9 +79,9 @@ export default function ImpactScreen() {
             </Tile>
             <Tile delay={200} icon={wow !== null && wow <= 0 ? 'trending-down' : 'trending-up'} iconColor="#4c5d55" iconBg="#f1f6f4" label="Waste vs last week">
               <Text className="text-[26px] font-extrabold text-ink">
-                {wow === null ? '—' : `${wow <= 0 ? '−' : '+'}${Math.abs(Math.round(wow * 100))}%`}
+                {wow === null ? '—' : `${Math.abs(Math.round(wow * 100))}%`}
               </Text>
-              <Text className="text-xs text-mute">{wow === null ? 'not enough data yet' : wow <= 0 ? 'less food binned' : 'more food binned'}</Text>
+              <Text className="text-xs text-mute">{wow === null ? 'not enough data yet' : wow <= 0 ? 'less food binned than last week' : 'more food binned than last week'}</Text>
             </Tile>
           </View>
 
@@ -178,7 +178,7 @@ function RescuedCard({ items }: { items: FridgeItem[] }) {
               <View style={{ height: 50, justifyContent: 'flex-end' }}>
                 <FoodShape name={item.name} category={item.category} scale={0.95} />
               </View>
-              <Text className="mt-2 text-[13px] font-bold text-ink" numberOfLines={1}>{displayName(item.name)}</Text>
+              <Text className="mt-2 text-[13px] font-bold text-ink" numberOfLines={2} style={{ textAlign: 'center' }}>{displayName(item.name)}</Text>
               <Text className="text-xs font-semibold text-fresh-700">{n}× saved</Text>
             </View>
           ))}

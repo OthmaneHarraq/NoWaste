@@ -181,14 +181,14 @@ function Hero({ today, activity, now, phone }: { today: ReturnType<typeof counts
         <MaterialCommunityIcons name="leaf" size={120} color="#ffffff" style={{ position: 'absolute', left: '42%', bottom: -40, opacity: 0.05, transform: [{ rotate: '-24deg' }] }} />
 
         <View className="flex-row flex-wrap items-end justify-between gap-6">
-          <View style={{ minWidth: 260, flexShrink: 1 }}>
+          <View style={{ minWidth: 260, flexGrow: 1, flexShrink: 1, flexBasis: 420 }}>
             <Text className="text-xs font-bold uppercase tracking-[3px] text-[#8fc9a8]">Activity</Text>
             <Text className={`${phone ? 'text-[28px]' : 'text-[36px]'} mt-1 font-extrabold tracking-tight text-white`}>Today in your fridge</Text>
             <Text className="mt-1 text-[14px] text-[#cfe7d9]">{now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
 
             <View className="mt-6 flex-row flex-wrap gap-3">
               {stats.map(s => (
-                <View key={s.label} className="min-w-[112px] rounded-2xl border border-[#2a5a43] bg-[#ffffff12] px-4 py-3">
+                <View key={s.label} style={{ flexGrow: 1, flexBasis: 112 }} className="min-w-[112px] rounded-2xl border border-[#2a5a43] bg-[#ffffff12] px-4 py-3">
                   <View className="flex-row items-center gap-2">
                     <View className="h-7 w-7 items-center justify-center rounded-full" style={{ backgroundColor: s.color + '33' }}>
                       <MaterialCommunityIcons name={s.icon} size={15} color={s.color} />
@@ -202,7 +202,7 @@ function Hero({ today, activity, now, phone }: { today: ReturnType<typeof counts
           </View>
 
           {/* 7-day in/out chart */}
-          <View className="rounded-2xl border border-[#2a5a43] bg-[#ffffff0d] p-4" style={{ minWidth: 280 }}>
+          <View className="rounded-2xl border border-[#2a5a43] bg-[#ffffff0d] p-4" style={{ minWidth: 280, flexGrow: 1, flexBasis: 320 }}>
             <View className="mb-3 flex-row items-center justify-between">
               <Text className="text-[12px] font-bold uppercase tracking-[2px] text-[#8fc9a8]">Last 7 days</Text>
               <View className="flex-row gap-3">
@@ -214,8 +214,8 @@ function Hero({ today, activity, now, phone }: { today: ReturnType<typeof counts
               {days.map((d, i) => (
                 <View key={i} className="flex-1 items-center gap-1.5">
                   <View className="w-full flex-row items-end justify-center gap-1" style={{ height: 76 }}>
-                    <View className="w-2.5 rounded-t-md" style={{ height: Math.max(3, (d.in / max) * 76), backgroundColor: '#9fd0f5' }} />
-                    <View className="w-2.5 rounded-t-md" style={{ height: Math.max(3, (d.out / max) * 76), backgroundColor: '#5fd497' }} />
+                    <View className="w-2.5 rounded-t-md" style={{ height: d.in ? Math.max(3, (d.in / max) * 76) : 0, backgroundColor: '#9fd0f5' }} />
+                    <View className="w-2.5 rounded-t-md" style={{ height: d.out ? Math.max(3, (d.out / max) * 76) : 0, backgroundColor: '#5fd497' }} />
                   </View>
                   <Text className={`text-[11px] ${i === 6 ? 'font-bold text-white' : 'text-[#8fc9a8]'}`}>
                     {i === 6 ? 'Today' : d.d.toLocaleDateString(undefined, { weekday: 'narrow' })}
@@ -269,7 +269,6 @@ function DayHeader({ title, date, entries }: { title: string; date: Date; entrie
           ))}
         </View>
       </View>
-      <View className="h-px flex-1 bg-line" style={{ maxWidth: 220 }} />
     </View>
   )
 }

@@ -139,6 +139,12 @@ function seedHistory(): FridgeItem[] {
   return out
 }
 
+function hash(s: string) {
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
+  return h
+}
+
 function activityFor(item: FridgeItem, kind: ActivityKind, at: string, via: ActivityEntry['via']): ActivityEntry {
   return {
     id: uid('a'),
@@ -149,10 +155,12 @@ function activityFor(item: FridgeItem, kind: ActivityKind, at: string, via: Acti
     at,
     via,
     quantity: item.quantity,
-    confidence: via === 'camera' ? 0.82 + Math.random() * 0.16 : null,
+    // Stable per item + kind, so reloads show the same numbers.
+    confidence: via === 'camera' ? 0.82 + (hash(item.name + kind) % 17) / 100 : null,
     rawLabel: null,
     undone: false,
-    eventId: `${item.id}|${kind}`,
+    // Automatic resolutions (grace period ran out, date passed) aren't user actions: no Undo.
+    eventId: via === 'system' ? null : `${item.id}|${kind}`,
   }
 }
 
