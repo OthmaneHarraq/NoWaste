@@ -38,6 +38,10 @@ const CSS = {
   door: WEB ? 'bg-[linear-gradient(150deg,#fbfdfc_0%,#eef3f1_55%,#e3eae6_100%)] dark:bg-[linear-gradient(150deg,#2a3430_0%,#222b27_55%,#1b2320_100%)]' : '',
   handle: WEB ? 'bg-[linear-gradient(90deg,#c9d2ce_0%,#f7faf9_45%,#d8e0dc_70%,#b8c3be_100%)] dark:bg-[linear-gradient(90deg,#4b5853_0%,#8a9a93_45%,#5b6a64_70%,#3c4843_100%)]' : '',
   floorShadow: WEB ? 'bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.22)_0%,rgba(0,0,0,0)_70%)]' : '',
+  // A classic scrollbar takes width from the right only, which pushed the centred appliance
+  // left whenever the fridge scrolled. Reserve the gutter on both edges instead. (A class, not
+  // a style prop: react-native-web drops style properties it doesn't know, like this one.)
+  scrollGutter: WEB ? '[scrollbar-gutter:stable_both-edges]' : '',
 }
 
 type Detail = { item: FridgeItem; rect: { left: number; top: number; bottom: number; width: number } } | null
@@ -65,7 +69,12 @@ export function FridgeView({ items, filtered }: { items: FridgeItem[]; filtered:
   return (
     <View className={`flex-1 overflow-hidden rounded-[28px] border border-line bg-frost ${CSS.backsplash}`} onLayout={e => setWidth(e.nativeEvent.layout.width)}>
       <View className="flex-1" style={{ minHeight: 0 }}>
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingTop: 26, paddingBottom: 26, paddingHorizontal: 16 }} onScroll={() => setDetail(null)} scrollEventThrottle={64}>
+      <ScrollView
+        className={`flex-1 ${CSS.scrollGutter}`}
+        contentContainerStyle={{ paddingTop: 26, paddingBottom: 26, paddingHorizontal: 16 }}
+        onScroll={() => setDetail(null)}
+        scrollEventThrottle={64}
+      >
         <View style={{ width: '100%', maxWidth: 1080, alignSelf: 'center', paddingHorizontal: 20 }}>
           {/* ===== Appliance body ===== */}
           <View
