@@ -334,7 +334,8 @@ function Drawer({ items, plate, filtered, quiet, onDetail }: Compartment) {
     <View className="px-3 pb-4 pt-3">
       <View className="px-2"><Label right={items.length ? <Count n={items.length} /> : undefined}>{label}</Label></View>
       <View className="overflow-hidden rounded-[22px] border" style={{ backgroundColor: dark ? '#1a2522' : '#e2eee9', borderColor: c.surface }}>
-        <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 30, minHeight: 104 }}>
+        {/* Bottom padding clears the frosted front (36 px), so the last row's rings stay fully visible */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 40, minHeight: 104 }}>
           <ItemGrid items={items} plate={plate} maxRows={2} label={label} onDetail={onDetail}
             empty={quiet ? null : <EmptySpot art={['apple', 'carrot', 'broccoli']} text={filtered ? 'Nothing here matches' : 'Crisper’s empty'} />} />
         </View>

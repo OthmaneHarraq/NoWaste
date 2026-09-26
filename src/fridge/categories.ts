@@ -50,15 +50,18 @@ const DB_CATEGORY: Record<string, FoodCategory> = {
   condiment: 'condiment',
 }
 
-// Fallback when an item has no catalog match: guess from its name.
+// Fallback when an item has no catalog match: guess from its name. First match wins, so
+// specific phrases come first (the same idea as FoodShape's MATCH list): a "… sauce" or
+// "peanut butter" is a condiment before "fish"/"butter" can make it meat/dairy, prepared
+// salads are takeout before "chicken"/"tuna" make them meat, and drinks come before
+// produce so orange juice isn't a fruit.
 const KEYWORDS: [FoodCategory, RegExp][] = [
-  ['takeout', /takeout|take-out|leftover|chipotle|pizza|burrito|sushi|thai|pad |curry|ramen|noodle|wings|fries|kebab|shawarma|burger|dumpling|to-go/],
-  ['meat', /chicken|beef|pork|bacon|ham|turkey|steak|sausage|salami|fish|salmon|tuna|shrimp|deli/],
-  ['dairy', /milk|cheese|yogh?urt|butter|cream|egg|kefir/],
-  // Drinks before produce, so orange juice / lemonade aren't filed as fruit.
-  ['beverage', /juice|soda|\bwater\b|beer|wine|kombucha|coffee|\btea\b|lemonade|drink|seltzer|\bcola\b/],
-  ['produce', /lettuce|spinach|kale|berr|apple|grape|carrot|broccoli|tomato|avocado|pepper|cucumber|onion|lemon|lime|herb|cilantro|basil|fruit|veg|salad|melon|mushroom|mango|peach|\bpears?\b|orange|banana|kiwi|plum|cherr|pineapple|nectarine|apricot|papaya|clementine|tangerine|mandarin|celery|scallion|zucchini|eggplant|\bcorn\b|potato|garlic|leek|cabbage|cauliflower|\bpeas?\b/],
-  ['condiment', /ketchup|mayo|mustard|sauce|sriracha|dressing|jam|salsa|relish|pickle/],
+  ['condiment', /\bsauce|ketchup|mayo|mustard|sriracha|dressing|ranch|vinaigrette|\bjam\b|jelly|marmalade|salsa|relish|pickle|pesto|peanut butter|almond butter|nut butter|\bhoney\b|syrup/],
+  ['takeout', /takeout|take-out|leftover|chipotle|pizza|burrito|sushi|thai|pad |curry|ramen|noodle|wings|fries|kebab|shawarma|burger|dumpling|to-go|nugget|(chicken|tuna|egg|pasta|potato) salad/],
+  ['beverage', /juice|soda|\bwater\b|beer|wine|kombucha|coffee|\btea\b|lemonade|drink|seltzer|\bcola\b|smoothie/],
+  ['meat', /chicken|beef|pork|bacon|\bham\b|turkey|steak|sausage|salami|hot dog|\bfranks?\b|meatball|lamb|veal|chorizo|prosciutto|fish|salmon|tuna|\bcod\b|shrimp|prawn|crab|lobster|scallop|deli/],
+  ['dairy', /milk|cheese|cheddar|mozzarella|parmesan|feta|brie|gouda|ricotta|halloumi|camembert|burrata|yogh?urt|skyr|kefir|butter|cream|\beggs?\b/],
+  ['produce', /lettuce|spinach|kale|berr|apple|grape|carrot|broccoli|tomato|avocado|pepper|cucumber|onion|lemon|lime|herb|cilantro|basil|fruit|veg|salad|melon|mushroom|mango|peach|\bpears?\b|orange|banana|kiwi|plum|cherr|pineapple|nectarine|apricot|papaya|clementine|tangerine|mandarin|celery|scallion|zucchini|eggplant|aubergine|\bcorn\b|potato|garlic|leek|cabbage|cauliflower|\bpeas?\b/],
 ]
 
 export function categorize(dbCategory: string | null | undefined, name: string): FoodCategory {
