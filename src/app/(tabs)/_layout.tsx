@@ -1,4 +1,4 @@
-import { ActivityIndicator, Platform, View, useWindowDimensions, type ColorValue } from 'react-native'
+import { ActivityIndicator, Platform, Text, View, useWindowDimensions, type ColorValue } from 'react-native'
 import { Tabs } from 'expo-router/js-tabs'
 import { Ionicons } from '@expo/vector-icons'
 import { AuthScreen, ProfileMenu, useAuth } from '@/auth'
@@ -7,6 +7,8 @@ import { FridgeProvider } from '@/fridge/FridgeProvider'
 import { USE_MOCK_DATA } from '@/fridge/config'
 import { HeaderStatus } from '@/fridge/components/HeaderStatus'
 import { ToastProvider } from '@/ui/Toast'
+import { Brand } from '@/ui/Brand'
+import { Sidebar } from '@/ui/Sidebar'
 import { colors } from '@/ui/theme'
 
 type IconName = keyof typeof Ionicons.glyphMap
@@ -45,8 +47,11 @@ export default function TabsLayout() {
     <ToastProvider>
       <FridgeProvider householdId={householdId}>
         <Tabs
+          // Wide screens: our own sidebar (brand, spaced nav, score card). Narrow: the stock bottom bar.
+          tabBar={wide ? props => <Sidebar {...props} fridgeName={fridgeName} /> : undefined}
           screenOptions={{
-            headerTitle: fridgeName,
+            // The sidebar already shows the brand on wide screens, so the header shows the day.
+            headerTitle: () => (wide ? <Today /> : <Brand fridge={fridgeName} compact={width < 420} />),
             headerStyle: { backgroundColor: colors.surface, borderBottomColor: colors.border },
             headerTitleStyle: { color: colors.text, fontWeight: '700' },
             headerShadowVisible: false,
@@ -60,7 +65,10 @@ export default function TabsLayout() {
             tabBarPosition: wide ? 'left' : 'bottom',
             tabBarVariant: wide ? 'material' : 'uikit',
             tabBarLabelPosition: wide ? 'beside-icon' : 'below-icon',
-            tabBarStyle: wide ? { minWidth: 200, paddingTop: 12, backgroundColor: colors.surface, borderRightColor: colors.border } : undefined,
+            // Web has no safe-area inset under the bar, so give icon + label explicit room.
+            tabBarStyle: wide ? undefined : Platform.OS === 'web' ? { height: 72, paddingTop: 6, paddingBottom: 10 } : undefined,
+            // ...and a real line height, or descenders (the y in Activity) get clipped.
+            tabBarLabelStyle: Platform.OS === 'web' ? { fontSize: 11, lineHeight: 15 } : undefined,
             tabBarActiveTintColor: colors.primary,
             tabBarActiveBackgroundColor: wide ? colors.primaryLight : undefined,
             tabBarInactiveTintColor: colors.muted,
@@ -80,5 +88,15 @@ export default function TabsLayout() {
         </Tabs>
       </FridgeProvider>
     </ToastProvider>
+  )
+}
+
+function Today() {
+  const d = new Date()
+  return (
+    <Text style={{ fontSize: 15, color: colors.muted, fontWeight: '500' }}>
+      <Text style={{ color: colors.text, fontWeight: '800' }}>{d.toLocaleDateString(undefined, { weekday: 'long' })}</Text>
+      {'  '}{d.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}
+    </Text>
   )
 }

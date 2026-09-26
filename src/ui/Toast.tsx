@@ -78,8 +78,11 @@ function ToastCard({ toast, onDone }: { toast: Toast; onDone: () => void }) {
           </View>
           <View className="flex-1">
             <Text className="text-[15px] font-semibold text-ink">{toast.title}</Text>
-            {toast.body ? <Text className="mt-0.5 text-[13px] leading-5 text-ink-soft">{toast.body}</Text> : null}
+            {toast.body ? <Text className="mt-0.5 text-[13px] leading-5 text-ink-soft" numberOfLines={3}>{toast.body}</Text> : null}
           </View>
+          <Pressable onPress={close} hitSlop={10} accessibilityLabel="Dismiss" className="h-6 w-6 items-center justify-center rounded-full active:bg-frost">
+            <MaterialCommunityIcons name="close" size={15} color="#8a9a93" />
+          </Pressable>
         </Pressable>
       </View>
     </Animated.View>

@@ -142,12 +142,12 @@ function useExpiryAlerts(items: FridgeItem[], now: Date, ready: boolean) {
       const expired = inFridge.filter(i => states.get(i.id) === 'expired')
       const soon = inFridge.filter(i => states.get(i.id) === 'soon')
       if (expired.length) {
-        const names = expired.map(i => displayName(i.name)).join(', ')
+        const names = listNames(expired.map(i => displayName(i.name)))
         toast({ tone: 'expired', title: `${expired.length} item${expired.length > 1 ? 's' : ''} past date`, body: `${names}. Time to check and clear ${expired.length > 1 ? 'them' : 'it'} out.` })
         notify('NoWaste: throw these out', names, 'nowaste-expired-summary')
       }
       if (soon.length) {
-        const body = soon.map(i => `${displayName(i.name)} (${expiryLabel(i, now).toLowerCase()})`).join(', ')
+        const body = listNames(soon.map(i => displayName(i.name))) + '. Use them first!'
         toast({ tone: 'soon', title: `${soon.length} item${soon.length > 1 ? 's' : ''} expiring soon`, body })
         notify(`NoWaste: use ${soon.length > 1 ? 'these' : 'this'} soon`, body, 'nowaste-soon-summary')
       }
@@ -169,4 +169,10 @@ function useExpiryAlerts(items: FridgeItem[], now: Date, ready: boolean) {
     }
     seen.current = states
   }, [items, now, ready, toast])
+}
+
+/** "A, B, C and 4 more": keeps the load-time summaries short. */
+function listNames(names: string[], max = 3) {
+  if (names.length <= max) return names.join(', ')
+  return `${names.slice(0, max).join(', ')} and ${names.length - max} more`
 }

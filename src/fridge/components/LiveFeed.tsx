@@ -1,11 +1,12 @@
 import { Pressable, Text, View } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { FadeIn, LiveDot } from '@/ui/motion'
+import { shadow } from '@/ui/theme'
 import { displayName } from '../categories'
 import { timeAgo } from '../freshness'
 import { useFridge } from '../FridgeProvider'
 import type { ActivityEntry } from '../types'
-import { CategoryIcon } from './visuals'
+import { FoodTile } from './FoodShape'
 
 const VERB: Partial<Record<ActivityEntry['kind'], { text: string; icon: 'arrow-down' | 'arrow-up' | 'undo'; color: string }>> = {
   added:    { text: 'Just added', icon: 'arrow-down', color: '#23804a' },
@@ -24,7 +25,7 @@ export function LiveFeed() {
   const on = connection === 'live' || (connection === 'demo' && simulatedCamera !== false)
 
   return (
-    <View className="overflow-hidden rounded-3xl border border-line bg-white">
+    <View className="overflow-hidden rounded-3xl border border-line bg-white" style={shadow.card}>
       <View className="bg-[#14201b] px-4 pb-3 pt-3.5">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-2">
@@ -65,7 +66,7 @@ export function LiveFeed() {
           return (
             <FadeIn key={a.id} from={-6}>
               <View className="flex-row items-center gap-3 rounded-xl px-2 py-2">
-                <CategoryIcon category={a.category} size={30} />
+                <FoodTile name={a.itemName} category={a.category} size={34} />
                 <View className="flex-1">
                   <Text numberOfLines={1} className="text-sm text-ink">
                     <Text className="font-semibold" style={{ color: v.color }}>{v.text}: </Text>

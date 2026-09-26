@@ -29,4 +29,16 @@
   --color-spoiled-500: #d9493a;
   --color-spoiled-600: #b53427;
   --color-spoiled-700: #8a2419;
+
+  /* Freezer only (never a freshness meaning). */
+  --color-ice-50: #f1f7fc;
+  --color-ice-100: #e3eff8;
+  --color-ice-200: #cfe1ef;
+  --color-ice-300: #bcd6ea;
+  --color-ice-500: #5b8fb9;
+  --color-ice-700: #3f6a8f;
+
+  /* Fridge cabinet (Fridge view). */
+  --color-enamel: #fbfcfb;
+  --color-enamel-edge: #dde5e1;
 }

@@ -7,7 +7,8 @@ import { PENDING_GRACE_MINUTES } from '../config'
 import { expiryLabel, freshnessOf } from '../freshness'
 import { useFridge } from '../FridgeProvider'
 import type { FridgeItem } from '../types'
-import { CategoryIcon, FRESHNESS, FreshnessChip } from './visuals'
+import { FoodTile } from './FoodShape'
+import { FRESHNESS, FreshnessChip } from './visuals'
 import { ExpiryEditor } from './ExpiryEditor'
 
 export const CARD_MIN_WIDTH = 164
@@ -29,7 +30,7 @@ export function ItemCard({ item, index = 0, width = CARD_MIN_WIDTH }: { item: Fr
     <FadeIn delay={Math.min(index, 12) * 35} style={{ width }}>
       <Pulse active={!pending && (freshness === 'soon' || freshness === 'expired')} color={f.hex}>
         <View
-          className={`overflow-hidden rounded-2xl border bg-white ${pending ? 'border-dashed border-mute' : frozen ? 'border-[#cfe1ef]' : 'border-line'}`}
+          className={`overflow-hidden rounded-2xl border bg-white ${pending ? 'border-dashed border-mute' : frozen ? 'border-ice-200' : 'border-line'}`}
           style={[
             { minHeight: 176 },
             pending ? { opacity: 0.78 } : { shadowColor: '#17251f', shadowOpacity: 0.07, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
@@ -38,9 +39,9 @@ export function ItemCard({ item, index = 0, width = CARD_MIN_WIDTH }: { item: Fr
           <View className="flex-1 gap-2 p-3">
             <View className="flex-row items-start justify-between">
               <View>
-                <CategoryIcon category={item.category} size={38} />
+                <FoodTile name={item.name} category={item.category} size={42} />
                 {frozen && (
-                  <View className="absolute -bottom-1 -right-1 h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-white bg-[#5b8fb9]">
+                  <View className="absolute -bottom-1 -right-1 h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-white bg-ice-500">
                     <MaterialCommunityIcons name="snowflake" size={10} color="#fff" />
                   </View>
                 )}
