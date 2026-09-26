@@ -34,7 +34,7 @@ A camera beside the fridge sees what goes in and out, AI identifies it, and ever
 3. **Authentication → Sign In / Providers → Email**: for the hackathon you can turn off "Confirm email" so sign-ups work instantly.
 4. **Organization settings → Team**: invite the rest of the group.
 5. Share the Project URL and anon key in the group chat (not in git).
-6. When the AI functions are ready: **Edge Functions → Secrets** → add `ANTHROPIC_API_KEY`, then deploy both:
+6. AI functions (free with Gemini): get a key at **aistudio.google.com → Get API key**, then in Supabase **Edge Functions → Secrets** add `GEMINI_API_KEY`. (A paid `ANTHROPIC_API_KEY` works too; see `supabase/functions/_shared/vision.ts`.) Then deploy both:
    `npx supabase functions deploy detect-items` (fridge camera) and `npx supabase functions deploy read-expiry` (phone Scan tab → "Read date").
 
 ## Who owns what

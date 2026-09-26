@@ -6,13 +6,13 @@
 // → { "date": "YYYY-MM-DD" | null, "kind": "best_by" | "use_by" | "expires" | "sell_by" | "other" | null,
 //     "text": "what was printed", "confidence": 0-1 }
 //
-// Secrets: ANTHROPIC_API_KEY (same as detect-items), optional VISION_MODEL.
+// Secrets: GEMINI_API_KEY (free) or ANTHROPIC_API_KEY, same as detect-items. See ../_shared/vision.ts.
 // Deploy: npx supabase functions deploy read-expiry --project-ref <your project ref>
 // Starting point only — not yet run against a real deployment.
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { askVision } from '../_shared/vision.ts'
 
-const MODEL = Deno.env.get('VISION_MODEL') ?? 'claude-haiku-4-5-20251001'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -53,27 +53,9 @@ Deno.serve(async req => {
   if (typeof image !== 'string' || image.length < 100) return json({ error: 'need image (base64 jpeg)' }, 400)
   const todayStr = /^\d{4}-\d{2}-\d{2}$/.test(today ?? '') ? today : new Date().toISOString().slice(0, 10)
 
-  const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
-  if (!apiKey) return json({ error: 'ANTHROPIC_API_KEY secret not set' }, 500)
-
-  const ai = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 200,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: image.replace(/^data:image\/\w+;base64,/, '') } },
-          { type: 'text', text: prompt(todayStr) },
-        ],
-      }],
-    }),
-  })
-  if (!ai.ok) return json({ error: `vision model error ${ai.status}`, detail: await ai.text() }, 502)
-
-  const text: string = (await ai.json()).content?.find((c: any) => c.type === 'text')?.text ?? ''
+  const ai = await askVision([image], prompt(todayStr), { maxTokens: 200, json: true })
+  if (!ai.ok) return json({ error: ai.error }, ai.status)
+  const text = ai.text
   try {
     const parsed = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1))
     const date = typeof parsed.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date) ? parsed.date : null

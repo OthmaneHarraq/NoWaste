@@ -6,16 +6,16 @@
 // → { "events": [ ...rows from record_event... ], "detections": [...] }
 //
 // Secrets (Supabase dashboard → Edge Functions → Secrets, or `supabase secrets set`):
-//   ANTHROPIC_API_KEY   required
-//   VISION_MODEL        optional, defaults below
+//   GEMINI_API_KEY      free (aistudio.google.com → Get API key), or ANTHROPIC_API_KEY (paid)
+//   VISION_MODEL        optional (see supabase/functions/_shared/vision.ts)
 // SUPABASE_URL / SUPABASE_ANON_KEY are provided automatically.
 //
 // Deploy: `npx supabase functions deploy detect-items`
 // Starting point only — not yet run against a real deployment. Tune the prompt with real frames.
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { askVision } from '../_shared/vision.ts'
 
-const MODEL = Deno.env.get('VISION_MODEL') ?? 'claude-haiku-4-5-20251001'
 const MIN_CONFIDENCE = 0.35 // below this, don't log anything
 const MAX_FRAMES = 4
 
@@ -56,30 +56,9 @@ Deno.serve(async req => {
 
   // TODO: per-household rate limit (e.g. max N calls/hour) so a stuck camera can't run up the bill.
 
-  const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
-  if (!apiKey) return json({ error: 'ANTHROPIC_API_KEY secret not set' }, 500)
-
-  const ai = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 400,
-      messages: [{
-        role: 'user',
-        content: [
-          ...frames.slice(0, MAX_FRAMES).map((data: string) => ({
-            type: 'image',
-            source: { type: 'base64', media_type: 'image/jpeg', data: data.replace(/^data:image\/\w+;base64,/, '') },
-          })),
-          { type: 'text', text: PROMPT },
-        ],
-      }],
-    }),
-  })
-  if (!ai.ok) return json({ error: `vision model error ${ai.status}`, detail: await ai.text() }, 502)
-
-  const text: string = (await ai.json()).content?.find((c: any) => c.type === 'text')?.text ?? '[]'
+  const ai = await askVision(frames.slice(0, MAX_FRAMES), PROMPT, { maxTokens: 400, json: true })
+  if (!ai.ok) return json({ error: ai.error }, ai.status)
+  const text = ai.text
   let detections: Detection[] = []
   try {
     detections = JSON.parse(text.slice(text.indexOf('['), text.lastIndexOf(']') + 1))
