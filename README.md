@@ -1,8 +1,8 @@
 # NoWaste 🥬
 
-A camera beside the fridge sees what goes in and out, AI identifies it, and everyone in the household shares a live inventory with expiry warnings, so food gets eaten instead of thrown away.
+A camera at the fridge sees what goes in and out, barcodes and AI identify it, and everyone in the household shares a live inventory with expiry warnings, so food gets eaten instead of thrown away.
 
-**Stack:** Expo (React Native + web) · Expo Router · Tailwind (Uniwind) · Supabase (auth, Postgres, realtime, Edge Functions) · Claude vision API
+**Stack:** Expo (React Native + web) · Expo Router · Tailwind (Uniwind) · Supabase (auth, Postgres, realtime, Edge Functions) · Google Gemini (free tier; Claude also supported) · Open Food Facts · ZXing / expo-camera barcode reading
 
 ---
 
@@ -15,8 +15,8 @@ A camera beside the fridge sees what goes in and out, AI identifies it, and ever
    cd NoWaste
    npm install
    ```
-3. Copy `.env.example` to `.env` and paste in the Supabase URL and anon key (ask in the group chat).
-   Set `EXPO_PUBLIC_USE_MOCK_DATA=true` to skip all of that and run on demo data (see [Dashboard](#dashboard-web--tablet)).
+3. Copy `.env.example` to `.env` (Windows: `copy .env.example .env`) and paste in the Supabase URL and anon key (ask in the group chat). The URL looks like `https://<project-id>.supabase.co`, not the dashboard link.
+   Set `EXPO_PUBLIC_USE_MOCK_DATA=true` to skip all of that and run on demo data (see [Dashboard](#dashboard-web-tablet-phone)).
 4. Run it:
    ```bash
    npx expo start
@@ -25,17 +25,29 @@ A camera beside the fridge sees what goes in and out, AI identifies it, and ever
 5. Sign up, create a fridge (or join with a teammate's code from their Settings tab), and use **Camera → Simulate a detection** to get test data.
 
 > Changed `.env`? Restart with `npx expo start --clear`.
+> **After every `git pull`, run `npm install`**: new features often add packages, and a missing one shows up as `Cannot find module …`.
 
 ## Supabase setup (one person, once)
 
 1. Create a project at supabase.com.
-2. **SQL Editor** → paste all of `supabase/migrations/20260926000000_nowaste_schema.sql` → Run.
-   Then do the same with every later file in `supabase/migrations/`, in name order (e.g. `20260926193000_smarter_expiry_matching.sql`, which lets "oat milk" or "chicken breast" use the catalog's milk / chicken shelf life).
+2. **SQL Editor** → paste each file in `supabase/migrations/` → Run, **in name order**:
+   1. `20260926000000_nowaste_schema.sql`: tables, security rules, `record_event` & co.
+   2. `20260926120000_add_location_and_disposition.sql`: freezer/shelf location and eaten/binned/composted
+   3. `20260926130000_ai_cache.sql`: cache for AI insights and recipes (optional)
+   4. `20260926193000_smarter_expiry_matching.sql`: "oat milk" → milk, "cream cheese" beats "cheese". **Must run after #2.** Safe to re-run; re-run it if an older copy was run before #2 (symptom: every add/remove fails with *function record_event … is not unique*).
 3. **Authentication → Sign In / Providers → Email**: for the hackathon you can turn off "Confirm email" so sign-ups work instantly.
 4. **Organization settings → Team**: invite the rest of the group.
 5. Share the Project URL and anon key in the group chat (not in git).
-6. AI functions (free with Gemini): get a key at **aistudio.google.com → Get API key**, then in Supabase **Edge Functions → Secrets** add `GEMINI_API_KEY`. (A paid `ANTHROPIC_API_KEY` works too; see `supabase/functions/_shared/vision.ts`.) Then deploy both:
-   `npx supabase functions deploy detect-items` (fridge camera) and `npx supabase functions deploy read-expiry` (phone Scan tab → "Read date").
+6. **AI (free with Gemini):** get a key at **aistudio.google.com → Get API key**, then in Supabase **Edge Functions → Secrets** add `GEMINI_API_KEY`. No redeploy is needed after changing a secret. (A paid `ANTHROPIC_API_KEY` also works for the camera functions; see `supabase/functions/_shared/vision.ts`.)
+7. **Deploy the Edge Functions**, one command at a time (don't paste them together):
+   ```bash
+   npx supabase login
+   npx supabase functions deploy detect-items      --project-ref <project-id>   # fridge camera
+   npx supabase functions deploy read-expiry       --project-ref <project-id>   # Scan tab → Read date
+   npx supabase functions deploy generate-insights --project-ref <project-id>   # To do tab insights
+   npx supabase functions deploy suggest-recipes   --project-ref <project-id>   # To do tab recipes
+   ```
+   Redeploy a function after pulling changes to its folder (or `_shared/`); the app code and the functions update separately.
 
 ## Who owns what
 
@@ -65,26 +77,33 @@ A camera beside the fridge sees what goes in and out, AI identifies it, and ever
 ## How the pieces fit
 
 ```
-Mounted phone camera ── motion → 3-4 frames ──▶ Edge Function detect-items
-                                                   │ Claude vision: "milk, in, 0.93"
-                                                   ▼
-                                           record_event()  (SQL)
-                                                   │ updates inventory + logs event
-                                                   ▼
-               Phone app ◀── Supabase Realtime ── inventory / events tables
-               (Fridge tab, Activity tab: Undo / Fix → correct_event() learns aliases)
+Laptop Camera tab (browser)                         Phone Scan tab (Expo Go)
+  ├─ motion → 6 photos ─▶ Edge Function detect-items    └─ barcode (native reader)
+  │                        Gemini: "apple, in, 0.85"       │
+  └─ barcode (ZXing) ──┐                                   │
+                       ▼                                   ▼
+          saved barcodes → Open Food Facts → "what is it?" (name once, remembered)
+                                       │
+                                       ▼
+                              record_event()  (SQL)
+                                       │ updates inventory + logs event
+                                       ▼
+   Every screen ◀── Supabase Realtime ── inventory / events tables
+   (Fridge, To do, Activity: Undo / Fix → correct_event() learns aliases, Impact)
 ```
 
 Database functions (all check you're a household member):
 
 | Function | Used for |
 |---|---|
-| `record_event(household, label, 'in'/'out', confidence)` | Camera or manual add/remove |
+| `record_event(household, label, 'in'/'out', confidence, source, quantity, location, disposition)` | Camera, barcode or manual add/remove (only the first three are required) |
 | `undo_event(event_id)` | Undo button |
 | `correct_event(event_id, name, action)` | Fix button; renames are remembered as aliases |
+| `set_location(inventory_id, location)` | Move to the freezer / a shelf (records thaw time) |
+| `update_disposition(event_id, disposition)` | Say whether something that left was eaten, binned or composted |
 | `join_household(code)` | Join a housemate's fridge |
 
-In the app, call them through `src/data/fridge.ts` (`recordEvent`, `undoEvent`, `correctEvent`) and read live data with `useInventory()` / `useEvents()`.
+In the app, call them through `src/data/fridge.ts` (`recordEvent`, `undoEvent`, `correctEvent`, `setLocation`, `updateDisposition`, `setExpiry`) and read live data with `useInventory()` / `useEvents()`.
 
 ## Project layout
 
@@ -94,12 +113,23 @@ src/
     _layout.tsx        providers
     (tabs)/_layout.tsx sign-in gate → fridge gate → tab bar
     (tabs)/index.tsx   Fridge dashboard (shelves + freezer, Action needed, camera feed)
+    (tabs)/todo.tsx    Action needed, recipes, shopping insights
     (tabs)/activity.tsx
     (tabs)/impact.tsx  saved vs wasted stats
-    (tabs)/camera.tsx
+    (tabs)/scan.tsx    phone barcode scanner + Read date (hidden on web)
+    (tabs)/camera.tsx  laptop fridge camera: motion, AI, barcodes
     (tabs)/settings.tsx
   auth/                login system (see src/auth/README.md)
   household/           create / join fridge, useHousehold()
+  camera/              fridge camera + barcodes (see "Fridge camera and barcodes")
+    CameraFeed.web.tsx   webcam preview, camera picker, green-screen fix
+    motion.ts            motion detection logic (unit-testable, no browser code)
+    useFrameRecorder.ts  picks 6 photos per movement for the AI
+    detect.ts            calls detect-items
+    barcode.ts           ZXing / built-in barcode reading
+    productLookup.ts     saved barcodes → Open Food Facts → shelf life
+    useBarcodeFlow.ts    look up → confirm → record_event (shared by laptop + phone)
+    readExpiry.ts        calls read-expiry (printed best-by dates)
   data/fridge.ts       database calls + live hooks
   fridge/              dashboard data layer + components (see "Dashboard")
     types.ts           the dashboard's data contract
@@ -113,8 +143,14 @@ src/
   ui/theme.ts          shared colors (Tailwind tokens live in src/global.css)
   global.css           Tailwind (Uniwind) entry + color tokens
 supabase/
-  migrations/          SQL schema
-  functions/detect-items/  AI Edge Function (Deno)
+  migrations/          SQL schema (run in name order)
+  functions/
+    _shared/vision.ts      photo → Gemini/Claude (used by detect-items, read-expiry)
+    _shared/llm.ts         text → Gemini + cache (used by insights, recipes)
+    detect-items/          camera photos → what went in/out
+    read-expiry/           photo of a package → printed best-by date
+    generate-insights/     To do tab shopping insights
+    suggest-recipes/       To do tab recipe ideas
 ```
 
 ## Dashboard (web, tablet, phone)
@@ -169,7 +205,7 @@ rule-of-thumb numbers for the demo, not food-safety advice):
 - **Automatic:** when an item goes in, the catalog's shelf life for that food sets the date (exact name, else a whole-word match: "oat milk" → milk). No catalog match → the category estimate above.
 - **By hand:** tap the date chip (✎) on any item card to pick a new date, or "Use estimate" to go back.
 - **From the package:** on the phone Scan tab, after adding an item tap **Read date** and photograph the printed best-by date (needs `read-expiry` deployed).
-- A date set by hand or read off the package wins over freezer estimates.
+- A date set by hand or read off the package wins over the "thawing" estimate after an item comes out of the freezer. Items **in** the freezer always use the freezer estimate (the editor says so).
 
 ### Run it
 
@@ -230,7 +266,7 @@ Every screen reads one shape, `FridgeItem` in `src/fridge/types.ts`:
 | `category` | `meat \| dairy \| produce \| takeout \| beverage \| condiment \| other` | `foods.category` via `food_id` / name, mapped (seafood→meat, prepared→takeout, drinks→beverage); else guessed from the name |
 | `source` | text, null | **not in schema**: restaurant for takeout, brand for packaged goods |
 | `quantity` | int | `inventory.quantity` |
-| `location` | `top_shelf | middle_shelf | drawer | door | freezer` | **not in schema**: fridge spot from category; freezer set in the app, stored per device |
+| `location` | `top_shelf | middle_shelf | drawer | door | freezer` | `inventory.location` (NULL = the category's usual spot); freezer moves via `set_location()`, synced across devices |
 | `added_at` | timestamptz | `inventory.added_at` |
 | `expires_at` | timestamptz, null | `inventory.expires_on` (date) for fridge items; freezer items and unknown foods use `src/fridge/expiration.ts` |
 | `status` | `in_fridge \| pending_removal \| consumed \| expired \| thrown_away` | **derived**, see below |
@@ -244,22 +280,69 @@ How status is derived from `events` (all in `src/fridge/adapter.ts`):
   item follows within the grace period it's treated as **put back**
 - `out` older than that (or manual) → `consumed`, or `expired` if `events.expires_on` was before
   the day it left (that's what the Impact page counts as wasted)
-- the user's explicit **Mark as used / Thrown away** choice is remembered per device
-  (AsyncStorage), because the schema has nowhere to store it
+- the user's explicit **Mark as used / Thrown away / Composted** choice is stored in
+  `events.disposition` (via `update_disposition()`), so it syncs across devices
 
 **Would make the dashboard more accurate if the backend adds them** (no changes made to the
 schema from the frontend):
 1. `source` and `image_url` on `inventory`/`events` (the AI already sees the takeout bag / brand).
-2. A way to record the outcome of an `out` (e.g. `events.outcome in ('consumed','thrown_away')`),
-   so waste stats sync across devices instead of being inferred.
+2. ~~A way to record the outcome of an `out`~~ Done: `events.disposition`.
 3. `record_event('in')` for something taken out a minute ago currently gives it a fresh expiry
    (`current_date + shelf_days`); restoring the old `expires_on` would keep "put back" honest.
-4. A `location` column on `inventory` (`'fridge' | 'freezer'` is enough), so a freezer move
-   syncs across devices. A second camera in the freezer could then set it directly.
+4. ~~A `location` column on `inventory`~~ Done: `inventory.location` + `thawed_at`.
 
 If a column is renamed, update `src/fridge/adapter.ts` (mapping) and the two queries in
 `src/fridge/liveSource.ts`; nothing else touches table rows.
 
+## Fridge camera and barcodes
+
+### Laptop: Camera tab (web)
+
+Open the web version (`npx expo start`, press `w`) → **Camera**. It only works on `localhost` or `https://` (browsers block the camera on plain `http://` addresses).
+
+- **Camera picker** (bottom-left of the preview) appears when more than one camera is connected (e.g. a USB webcam); the choice is remembered.
+- **Motion:** the meter shows how much of the picture changed; Low / Medium / High sensitivity. A movement ends after 1.5 s of stillness.
+- **Send to AI:** each movement sends 6 photos (before, 4 during, after) to `detect-items`. Results show as **Added apple** (Fix / Undo), plus **AI saw: …** lines for guesses that weren't confident enough to log. Turn it off while you work, to save the free AI allowance.
+- **Barcodes:** hold a package's barcode flat inside the dashed box, filling most of it. A read beeps, flashes green and shows a card (**Put in / Took out**, auto-confirms in 5 s). Direction is a guess: already in the fridge → "took out". A movement handled by a barcode isn't also sent to the AI.
+- **Simulate a detection** buttons fake a camera event for testing without a camera or AI.
+
+### Phone: Scan tab (Expo Go)
+
+Phone cameras focus up close, so this is the reliable way to scan barcodes. Point at a barcode: the phone vibrates, the aim box turns green, same card as the laptop. After adding an item, **Read date** photographs the printed best-by date and sets its expiry (needs `read-expiry` deployed).
+
+Barcode lookup order: barcodes your household already saw → [Open Food Facts](https://world.openfoodfacts.org) (free, ~15 lookups/min, so every result is saved) → "New barcode: what is it?" (name it once, remembered).
+
+### Product vision
+
+In the product, a small camera sits **inside the fridge by the door, facing out**: it wakes when the door opens (the fridge light), sees every item cross the doorway up close, and can't see anything while the door is shut. The laptop camera stands in for it in the demo.
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| White page in the browser | Press F12 → Console. Usually "Missing Supabase settings": check `.env`, then `npx expo start --clear`. |
+| "Failed to fetch" on sign-up | `EXPO_PUBLIC_SUPABASE_URL` must be `https://<project-id>.supabase.co`, not the dashboard link. |
+| `Cannot find module …` (e.g. `uniwind/metro`) | Run `npm install` (a pull added packages). |
+| "Can't reach the AI function: probably not deployed yet" | Deploy `detect-items` (Supabase setup step 7). |
+| "No AI key set" | Add `GEMINI_API_KEY` in Edge Functions → Secrets. |
+| "Free AI limit reached" | Wait a minute; turn off Send to AI while not testing. |
+| Every add/remove fails: *record_event … is not unique* | Re-run `20260926193000_smarter_expiry_matching.sql`. |
+| Camera zooms / pans by itself, false motion events | Windows **Settings → Bluetooth & devices → Cameras → Windows Studio Effects → Automatic framing: off** (or the laptop maker's "auto framing" setting). |
+| Green video from DroidCam / a virtual webcam | The app retries at the camera's own resolution. Still green in other sites too (webcamtests.com)? It's DroidCam + Chrome: set DroidCam's resolution to 640×480 and restart its client, try Firefox, or use Iriun Webcam. |
+| Barcode won't read on the laptop | Laptop webcams can't focus close up. Hold it 30–50 cm away inside the dashed box, avoid glare, or use the phone Scan tab. |
+| Food on the desk gets logged as "took out" | At a desk, keep food out of the camera's view; picking up something that was sitting there looks like "out". Undo fixes it. |
+| Phone can't load the app on hackathon Wi-Fi | `npx expo start --tunnel` (Windows: if it asks for `@expo/ngrok`, run `npm install --no-save @expo/ngrok@^4.1.0` first). |
+
+## Demo link (optional)
+
+To give judges something to click without an account, deploy the **demo-data** build:
+```bash
+# .env: EXPO_PUBLIC_USE_MOCK_DATA=true
+npm run build:web
+```
+Drag the `dist` folder onto **app.netlify.com/drop**. (`public/_redirects` makes page links work there.) A phone browser can also use the Camera tab from an `https://` link like this, with live data if the build is made with `EXPO_PUBLIC_USE_MOCK_DATA=false`.
+
 ## Privacy
 
 It's a camera in someone's kitchen. Frames are only captured during motion, sent to the Edge Function, and never stored. Keep it that way.
+Aim the camera at hands and food, not faces. On Gemini's **free** tier, Google may use what's sent to improve its products; the paid tier (or Claude) doesn't.
