@@ -43,4 +43,4 @@ export default function TodoScreen() {
 }
 
 // Web-only dot texture behind the page (matches Impact and Activity).
-const DOTS = Platform.OS === 'web' ? 'bg-[radial-gradient(#dde6e1_1.2px,transparent_1.2px)] bg-[length:20px_20px] dark:bg-[radial-gradient(#1f2a25_1.2px,transparent_1.2px)]' : ''
+const DOTS = Platform.OS === 'web' ? 'bg-[radial-gradient(#cfdcd3_1.2px,transparent_1.2px)] bg-[length:20px_20px] dark:bg-[radial-gradient(#1f2a25_1.2px,transparent_1.2px)]' : ''

@@ -130,7 +130,7 @@ export default function ImpactScreen() {
 }
 
 // Web-only dot texture behind the page (matches Activity).
-const DOTS = Platform.OS === 'web' ? 'bg-[radial-gradient(#dde6e1_1.2px,transparent_1.2px)] bg-[length:20px_20px] dark:bg-[radial-gradient(#1f2a25_1.2px,transparent_1.2px)]' : ''
+const DOTS = Platform.OS === 'web' ? 'bg-[radial-gradient(#cfdcd3_1.2px,transparent_1.2px)] bg-[length:20px_20px] dark:bg-[radial-gradient(#1f2a25_1.2px,transparent_1.2px)]' : ''
 
 /** Unit chart: every item that left the fridge is one tile, green if eaten, coral if wasted. */
 function Waffle({ items }: { items: FridgeItem[] }) {

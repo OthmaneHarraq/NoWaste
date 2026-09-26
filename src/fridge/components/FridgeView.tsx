@@ -26,7 +26,7 @@ const byExpiry = (a: FridgeItem, b: FridgeItem) =>
 
 // Web-only CSS finishes (native gets the flat colours underneath).
 const CSS = {
-  backsplash: WEB ? 'bg-[linear-gradient(#e6ece9_1px,transparent_1px),linear-gradient(90deg,#e6ece9_1px,transparent_1px)] bg-[length:48px_48px] dark:bg-[linear-gradient(#1c2521_1px,transparent_1px),linear-gradient(90deg,#1c2521_1px,transparent_1px)]' : '',
+  backsplash: WEB ? 'bg-[linear-gradient(#d6dfd8_1px,transparent_1px),linear-gradient(90deg,#d6dfd8_1px,transparent_1px)] bg-[length:48px_48px] dark:bg-[linear-gradient(#1c2521_1px,transparent_1px),linear-gradient(90deg,#1c2521_1px,transparent_1px)]' : '',
   // Soft white enamel / brushed stainless body
   body: WEB ? 'bg-[linear-gradient(160deg,#ffffff_0%,#f1f5f3_38%,#dde5e1_100%)] dark:bg-[linear-gradient(160deg,#34403b_0%,#27302c_40%,#1c2320_100%)]' : '',
   brushed: WEB ? 'bg-[repeating-linear-gradient(90deg,rgba(255,255,255,0.22)_0px,rgba(255,255,255,0.22)_1px,transparent_1px,transparent_5px)]' : '',

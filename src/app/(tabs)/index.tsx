@@ -21,7 +21,7 @@ const WEB = Platform.OS === 'web'
 type ViewMode = 'normal' | 'fridge'
 const VIEW_KEY = 'nowaste:view'
 // Web-only dot texture behind the page (same as Activity and Impact).
-const DOTS = WEB ? 'bg-[radial-gradient(#dde6e1_1.2px,transparent_1.2px)] bg-[length:20px_20px] dark:bg-[radial-gradient(#1f2a25_1.2px,transparent_1.2px)]' : ''
+const DOTS = WEB ? 'bg-[radial-gradient(#cfdcd3_1.2px,transparent_1.2px)] bg-[length:20px_20px] dark:bg-[radial-gradient(#1f2a25_1.2px,transparent_1.2px)]' : ''
 
 function savedView(): ViewMode {
   try {

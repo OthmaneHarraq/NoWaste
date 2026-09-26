@@ -47,7 +47,7 @@ const FILTERS: { key: Filter; label: string; icon: IconName; kinds: ActivityKind
 
 const WEB = Platform.OS === 'web'
 // Web-only texture and gradient (plain colours elsewhere).
-const DOTS = WEB ? 'bg-[radial-gradient(#dde6e1_1.2px,transparent_1.2px)] bg-[length:20px_20px] dark:bg-[radial-gradient(#1f2a25_1.2px,transparent_1.2px)]' : ''
+const DOTS = WEB ? 'bg-[radial-gradient(#cfdcd3_1.2px,transparent_1.2px)] bg-[length:20px_20px] dark:bg-[radial-gradient(#1f2a25_1.2px,transparent_1.2px)]' : ''
 const HERO_GRADIENT = WEB ? 'bg-[linear-gradient(125deg,#0f2e21_0%,#17442f_45%,#1f6b47_100%)]' : ''
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()

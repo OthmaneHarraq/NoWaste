@@ -23,9 +23,9 @@ export type Palette = {
 export const palettes: { light: Palette; dark: Palette } = {
   light: {
     primary: '#23804a', primaryLight: '#eef8f1',
-    background: '#fafbf9', surface: '#ffffff', raised: '#ffffff', frost: '#f1f6f4',
+    background: '#e9eee8', surface: '#ffffff', raised: '#ffffff', frost: '#e0e8e1',
     text: '#17251f', textSoft: '#4c5d55', muted: '#8a9a93', onInk: '#ffffff',
-    border: '#e2e9e5', glass: '#cfe2db',
+    border: '#d7e0d9', glass: '#cfe2db',
     fresh: '#2f9e5b', soon: '#e39a1b', spoiled: '#d9493a', unknown: '#8a9a93',
     freshTint: '#eef8f1', soonTint: '#fff7e8', spoiledTint: '#fdefed',
     ice: '#5b8fb9', iceBg: '#eaf3fa', iceLine: '#cfe1ef', iceGlass: '#bcd6ea', iceText: '#3f6a8f',
