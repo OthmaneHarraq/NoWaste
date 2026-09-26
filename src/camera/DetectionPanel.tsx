@@ -75,7 +75,7 @@ function EntryRow({ entry }: { entry: DetectionEntry }) {
     captured: { icon: 'images-outline', text: 'Captured (Send to AI is off)', color: colors.muted },
     skipped: { icon: 'pause-circle-outline', text: 'Skipped: still waiting on the previous answer', color: colors.warning },
     nothing: { icon: 'eye-off-outline', text: 'Nothing clearly moved in or out', color: colors.muted },
-    'not-deployed': { icon: 'construct-outline', text: 'AI function not deployed yet (supabase/functions/detect-items)', color: colors.warning },
+    'not-deployed': { icon: 'construct-outline', text: 'Can’t reach the AI function: it’s probably not deployed yet (supabase/functions/detect-items)', color: colors.warning },
     error: { icon: 'alert-circle-outline', text: entry.message ?? 'Something went wrong', color: colors.danger },
   }
   const i = info[entry.status === 'ok' ? 'nothing' : entry.status]

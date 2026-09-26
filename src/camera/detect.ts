@@ -34,7 +34,14 @@ export async function detectItems(householdId: string, frames: string[]): Promis
     return { kind: 'error', message }
   }
   if (error instanceof FunctionsRelayError || error instanceof FunctionsFetchError) {
-    return { kind: 'error', message: 'Couldn’t reach the AI function. Check your internet connection.' }
+    // Offline really is offline...
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      return { kind: 'error', message: 'You’re offline. Check the internet connection.' }
+    }
+    // ...but when online, this almost always means the function isn't deployed:
+    // Supabase's "not found" reply has no CORS headers, so the browser only reports
+    // a failed request instead of a 404.
+    return { kind: 'not-deployed' }
   }
   return { kind: 'error', message: error.message ?? String(error) }
 }
