@@ -7,24 +7,26 @@ import { useFridge } from '../FridgeProvider'
 import type { FridgeItem } from '../types'
 import { FoodShape, FoodTile } from './FoodShape'
 import { FRESHNESS } from './visuals'
+import { useTheme } from '@/ui/ThemeProvider'
 
 /** The core of the app: what to eat or bin today. Always visible on the dashboard. */
 export function ActionNeededPanel() {
   const { actionNeeded, loading } = useFridge()
   const expired = actionNeeded.filter(i => freshnessOf(i) === 'expired').length
   const clear = !loading && actionNeeded.length === 0
+  const { c } = useTheme()
 
   return (
     <View
-      className={`overflow-hidden rounded-3xl border ${clear ? 'border-fresh-100 bg-fresh-50' : expired ? 'border-spoiled-100 bg-white' : 'border-soon-100 bg-white'}`}
-      style={{ shadowColor: '#17251f', shadowOpacity: clear ? 0 : 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 6 } }}
+      className={`overflow-hidden rounded-3xl border ${clear ? 'border-fresh-100 bg-fresh-50' : expired ? 'border-spoiled-100 bg-surface' : 'border-soon-100 bg-surface'}`}
+      style={{ shadowColor: '#000000', shadowOpacity: clear ? 0 : 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 6 } }}
     >
       <View className={`flex-row items-center gap-3 px-4 py-3.5 ${clear ? '' : expired ? 'bg-spoiled-50' : 'bg-soon-50'}`}>
         <View className={`h-9 w-9 items-center justify-center rounded-full ${clear ? 'bg-fresh-100' : expired ? 'bg-spoiled-100' : 'bg-soon-100'}`}>
           <MaterialCommunityIcons
             name={clear ? 'check' : expired ? 'alert-octagon-outline' : 'clock-alert-outline'}
             size={19}
-            color={clear ? '#1b653b' : expired ? '#8a2419' : '#8a5806'}
+            color={clear ? c.fresh : expired ? c.spoiled : c.soon}
           />
         </View>
         <View className="flex-1">

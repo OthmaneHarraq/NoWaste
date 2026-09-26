@@ -10,12 +10,14 @@ import { dailySeries, totals, wastedByCategory, wasteFreeStreak, weekOverWeek } 
 import { CategoryBars, CountUp, Legend, SAVED, SavedWastedChart, WASTED } from '@/fridge/components/charts'
 import { FadeIn } from '@/ui/motion'
 import { shadow } from '@/ui/theme'
+import { useTheme } from '@/ui/ThemeProvider'
 
 // OWNER: phone app team. The "is this working?" page: food saved vs wasted over time.
 export default function ImpactScreen() {
   const { history, now } = useFridge()
   const { width } = useWindowDimensions()
   const [showTable, setShowTable] = useState(false)
+  const { c } = useTheme()
 
   const stats = useMemo(() => {
     const monthAgo = now.getTime() - 30 * 86_400_000
@@ -38,7 +40,7 @@ export default function ImpactScreen() {
   return (
     <ScrollView className={`flex-1 bg-paper ${DOTS}`} contentContainerStyle={{ padding: width < 600 ? 14 : 24, paddingBottom: 48 }}>
       <View className="mb-5">
-        <Text className="text-[28px] font-extrabold tracking-tight text-ink">Your impact</Text>
+        <Text className="font-display-bold text-[34px] leading-[40px] text-ink">Your impact</Text>
         <Text className="mt-0.5 text-sm text-ink-soft">Last 30 days of this fridge</Text>
       </View>
 
@@ -46,13 +48,13 @@ export default function ImpactScreen() {
         <View className="gap-5" style={wide ? { flex: 1.35 } : undefined}>
           {/* Hero */}
           <FadeIn>
-            <View className="overflow-hidden rounded-3xl bg-[#123526] p-6">
+            <View className="overflow-hidden rounded-3xl border border-[#23402f] bg-[#123526] p-6">
               <MaterialCommunityIcons name="leaf" size={180} color="#1b4a35" style={{ position: 'absolute', right: -24, top: -30, transform: [{ rotate: '-18deg' }] }} />
               <Text className="text-xs font-bold uppercase tracking-[2px] text-[#8fc9a8]">Waste avoided</Text>
               <View className="mt-1 flex-row items-end gap-3">
                 {pct === null
-                  ? <Text className="text-[64px] font-extrabold text-white">—</Text>
-                  : <CountUp value={pct} format={v => `${Math.round(v)}%`} className="text-[64px] font-extrabold leading-[70px] tracking-tighter text-white" />}
+                  ? <Text className="font-display-bold text-[64px] text-white">—</Text>
+                  : <CountUp value={pct} format={v => `${Math.round(v)}%`} className="font-display-bold text-[68px] leading-[72px] text-white" />}
                 <Text className="mb-3 max-w-[220px] text-[15px] leading-5 text-[#cfe7d9]">of the food that left your fridge got eaten, not binned</Text>
               </View>
 
@@ -69,15 +71,15 @@ export default function ImpactScreen() {
           </FadeIn>
 
           <View className="flex-row flex-wrap gap-4">
-            <Tile delay={80} icon="fire" iconColor="#b8760a" iconBg="#fff7e8" label="Waste-free streak">
+            <Tile delay={80} icon="fire" iconColor={c.soon} iconBg={c.soonTint} label="Waste-free streak">
               <CountUp value={streak ?? 0} format={v => `${Math.round(v)} day${Math.round(v) === 1 ? '' : 's'}`} className="text-[26px] font-extrabold text-ink" />
               <Text className="text-xs text-mute">{streak === null ? 'Nothing wasted, ever' : 'since anything was binned'}</Text>
             </Tile>
-            <Tile delay={140} icon="silverware-fork-knife" iconColor={SAVED} iconBg="#eef8f1" label="Eaten in time">
+            <Tile delay={140} icon="silverware-fork-knife" iconColor={c.fresh} iconBg={c.freshTint} label="Eaten in time">
               <CountUp value={t.saved} className="text-[26px] font-extrabold text-ink" />
               <Text className="text-xs text-mute">items, last 30 days</Text>
             </Tile>
-            <Tile delay={200} icon={wow !== null && wow <= 0 ? 'trending-down' : 'trending-up'} iconColor="#4c5d55" iconBg="#f1f6f4" label="Waste vs last week">
+            <Tile delay={200} icon={wow !== null && wow <= 0 ? 'trending-down' : 'trending-up'} iconColor={c.textSoft} iconBg={c.frost} label="Waste vs last week">
               <Text className="text-[26px] font-extrabold text-ink">
                 {wow === null ? '—' : `${Math.abs(Math.round(wow * 100))}%`}
               </Text>
@@ -106,7 +108,7 @@ export default function ImpactScreen() {
             <CategoryBars data={byCategory} />
             {worst && (
               <View className="mt-5 flex-row gap-3 rounded-2xl bg-frost p-3.5">
-                <MaterialCommunityIcons name="lightbulb-on-outline" size={18} color="#4c5d55" />
+                <MaterialCommunityIcons name="lightbulb-on-outline" size={18} color={c.textSoft} />
                 <Text className="flex-1 text-[13px] leading-5 text-ink-soft">
                   <Text className="font-semibold text-ink">{CATEGORIES[worst.category].label}</Text> is where most waste happens.{' '}
                   {TIPS[worst.category]}
@@ -125,7 +127,7 @@ export default function ImpactScreen() {
 }
 
 // Web-only dot texture behind the page (matches Activity).
-const DOTS = Platform.OS === 'web' ? 'bg-[radial-gradient(#dde6e1_1.2px,transparent_1.2px)] bg-[length:20px_20px]' : ''
+const DOTS = Platform.OS === 'web' ? 'bg-[radial-gradient(#dde6e1_1.2px,transparent_1.2px)] bg-[length:20px_20px] dark:bg-[radial-gradient(#1f2a25_1.2px,transparent_1.2px)]' : ''
 
 /** Unit chart: every item that left the fridge is one tile, green if eaten, coral if wasted. */
 function Waffle({ items }: { items: FridgeItem[] }) {
@@ -156,6 +158,7 @@ function Waffle({ items }: { items: FridgeItem[] }) {
 
 /** The foods most often eaten in time, drawn with the same illustrations as the Fridge view. */
 function RescuedCard({ items }: { items: FridgeItem[] }) {
+  const { c, dark } = useTheme()
   const tally = new Map<string, { item: FridgeItem; n: number }>()
   for (const i of items) {
     if (i.status !== 'consumed') continue
@@ -168,13 +171,13 @@ function RescuedCard({ items }: { items: FridgeItem[] }) {
   if (!top.length) return null
   return (
     <FadeIn delay={160}>
-      <View className="overflow-hidden rounded-3xl bg-fresh-50 p-5" style={[shadow.card, { borderWidth: 1, borderColor: '#d5eedc' }]}>
-        <MaterialCommunityIcons name="trophy-outline" size={110} color="#d5eedc" style={{ position: 'absolute', right: -16, top: -10, transform: [{ rotate: '12deg' }] }} />
+      <View className="overflow-hidden rounded-3xl bg-fresh-50 p-5" style={[shadow.card, { borderWidth: 1, borderColor: dark ? '#1b3a29' : '#d5eedc' }]}>
+        <MaterialCommunityIcons name="trophy-outline" size={110} color={dark ? '#1b3a29' : '#d5eedc'} style={{ position: 'absolute', right: -16, top: -10, transform: [{ rotate: '12deg' }] }} />
         <Text className="text-[11px] font-bold uppercase tracking-[2px] text-fresh-700">Hall of fame</Text>
-        <Text className="mb-4 mt-1 text-[17px] font-extrabold text-ink">Rescued most often</Text>
+        <Text className="mb-4 mt-1 font-display text-[20px] text-ink">Rescued most often</Text>
         <View className="flex-row flex-wrap gap-3">
           {top.map(({ item, n }) => (
-            <View key={item.name} className="min-w-[92px] flex-1 items-center rounded-2xl bg-white px-2 py-3" style={shadow.card}>
+            <View key={item.name} className="min-w-[92px] flex-1 items-center rounded-2xl bg-surface px-2 py-3" style={shadow.card}>
               <View style={{ height: 50, justifyContent: 'flex-end' }}>
                 <FoodShape name={item.name} category={item.category} scale={0.95} />
               </View>
@@ -201,10 +204,10 @@ const TIPS: Record<string, string> = {
 function Card({ title, subtitle, right, children }: { title: string; subtitle: string; right?: ReactNode; children: ReactNode }) {
   return (
     <FadeIn delay={120}>
-      <View className="rounded-3xl border border-line bg-white p-5" style={shadow.card}>
+      <View className="rounded-3xl border border-line bg-surface p-5" style={shadow.card}>
         <View className="mb-4 flex-row items-start justify-between gap-3">
           <View className="flex-1">
-            <Text className="text-[17px] font-bold text-ink">{title}</Text>
+            <Text className="font-display text-[20px] text-ink">{title}</Text>
             <Text className="mt-0.5 text-[13px] text-mute">{subtitle}</Text>
           </View>
           {right}
@@ -225,7 +228,7 @@ function Tile({ icon, iconColor, iconBg, label, delay, children }: {
 }) {
   return (
     <FadeIn delay={delay} style={{ flexGrow: 1, flexBasis: 170 }}>
-      <View className="gap-1 rounded-3xl border border-line bg-white p-4" style={shadow.card}>
+      <View className="gap-1 rounded-3xl border border-line bg-surface p-4" style={shadow.card}>
         <View className="mb-1 flex-row items-center gap-2">
           <View className="h-7 w-7 items-center justify-center rounded-full" style={{ backgroundColor: iconBg }}>
             <MaterialCommunityIcons name={icon} size={16} color={iconColor} />

@@ -57,3 +57,16 @@ export function timeAgo(iso: string, now = Date.now()): string {
   const days = Math.round(hrs / 24)
   return days === 1 ? 'yesterday' : `${days} days ago`
 }
+
+/**
+ * How much of its life an item has left, 1 → 0 (added → expiry). Drives the Fridge view's
+ * ring. Purely visual: freshness itself is still decided by freshnessOf() above.
+ * null when the item has no date.
+ */
+export function lifeLeft(item: Pick<FridgeItem, 'added_at' | 'expires_at'>, now = new Date()): number | null {
+  if (!item.expires_at) return null
+  const start = new Date(item.added_at).getTime()
+  const end = new Date(item.expires_at).getTime()
+  if (end <= start) return 0
+  return Math.min(1, Math.max(0, (end - now.getTime()) / (end - start)))
+}

@@ -2,12 +2,19 @@
 @import 'uniwind';
 
 /* NoWaste palette. Freshness colors are used ONLY for freshness state:
-   fresh = green, soon = amber, spoiled = red. Keep src/ui/theme.ts in sync. */
+   fresh = green, soon = amber, spoiled = red. Keep src/ui/theme.ts in sync.
+   @theme holds the light values (so Tailwind generates the utilities); the
+   @layer theme block below switches every token between light and dark. */
 @theme {
+  --font-display: 'Fredoka_600SemiBold', 'Fredoka', ui-rounded, system-ui, sans-serif;
+  --font-display-bold: 'Fredoka_700Bold', 'Fredoka', ui-rounded, system-ui, sans-serif;
+
   --color-ink: #17251f;
   --color-ink-soft: #4c5d55;
   --color-mute: #8a9a93;
+  --color-on-ink: #ffffff;
   --color-paper: #fafbf9;
+  --color-surface: #ffffff;
   --color-frost: #f1f6f4;
   --color-line: #e2e9e5;
   --color-glass: #cfe2db;
@@ -41,4 +48,81 @@
   /* Fridge cabinet (Fridge view). */
   --color-enamel: #fbfcfb;
   --color-enamel-edge: #dde5e1;
+}
+
+@layer theme {
+  :root {
+    @variant light {
+      --color-ink: #17251f;
+      --color-ink-soft: #4c5d55;
+      --color-mute: #8a9a93;
+      --color-on-ink: #ffffff;
+      --color-paper: #fafbf9;
+      --color-surface: #ffffff;
+      --color-frost: #f1f6f4;
+      --color-line: #e2e9e5;
+      --color-glass: #cfe2db;
+      --color-fresh-50: #eef8f1;
+      --color-fresh-100: #d5eedc;
+      --color-fresh-500: #2f9e5b;
+      --color-fresh-600: #23804a;
+      --color-fresh-700: #1b653b;
+      --color-soon-50: #fff7e8;
+      --color-soon-100: #fcebc6;
+      --color-soon-500: #e39a1b;
+      --color-soon-600: #b8760a;
+      --color-soon-700: #8a5806;
+      --color-spoiled-50: #fdefed;
+      --color-spoiled-100: #f8d3ce;
+      --color-spoiled-500: #d9493a;
+      --color-spoiled-600: #b53427;
+      --color-spoiled-700: #8a2419;
+      --color-ice-50: #f1f7fc;
+      --color-ice-100: #e3eff8;
+      --color-ice-200: #cfe1ef;
+      --color-ice-300: #bcd6ea;
+      --color-ice-500: #5b8fb9;
+      --color-ice-700: #3f6a8f;
+      --color-enamel: #fbfcfb;
+      --color-enamel-edge: #dde5e1;
+    }
+
+    /* Dark: green-tinted charcoal, not pure black. The *-700 shades are the "strong text"
+       role, so in dark they get LIGHTER; *-50/100 tints become deep washes. Freshness
+       500s were checked for contrast on the surface (see src/ui/theme.ts). */
+    @variant dark {
+      --color-ink: #e6eee9;
+      --color-ink-soft: #b1bfb8;
+      --color-mute: #7f918a;
+      --color-on-ink: #0f1513;
+      --color-paper: #0f1513;
+      --color-surface: #171e1b;
+      --color-frost: #1e2723;
+      --color-line: #2a3530;
+      --color-glass: #2f3f38;
+      --color-fresh-50: #13271c;
+      --color-fresh-100: #1b3a29;
+      --color-fresh-500: #2ea864;
+      --color-fresh-600: #26915a;
+      --color-fresh-700: #74d49b;
+      --color-soon-50: #2a2012;
+      --color-soon-100: #3f2f15;
+      --color-soon-500: #cf8c14;
+      --color-soon-600: #b87a10;
+      --color-soon-700: #f0c064;
+      --color-spoiled-50: #2c1716;
+      --color-spoiled-100: #45211f;
+      --color-spoiled-500: #e8474f;
+      --color-spoiled-600: #c93a40;
+      --color-spoiled-700: #ff8e86;
+      --color-ice-50: #121e27;
+      --color-ice-100: #172834;
+      --color-ice-200: #233a4a;
+      --color-ice-300: #2e4c60;
+      --color-ice-500: #7fb3dc;
+      --color-ice-700: #a8cdea;
+      --color-enamel: #202925;
+      --color-enamel-edge: #323d38;
+    }
+  }
 }

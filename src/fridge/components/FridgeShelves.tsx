@@ -5,7 +5,9 @@ import { LOCATIONS } from '../categories'
 import { daysUntil } from '../freshness'
 import type { FridgeItem } from '../types'
 import { CARD_MIN_WIDTH, CARD_MIN_WIDTH_PHONE, ItemCard } from './ItemCard'
-import { ICE } from './visuals'
+import { EmptySpot, WholeFridgeEmpty } from './FridgeView'
+import { useIce } from './visuals'
+import { useTheme } from '@/ui/ThemeProvider'
 
 export type SortMode = 'shelf' | 'expiry'
 
@@ -15,6 +17,15 @@ const BORDER = 10 // 5px frame on each side
 
 const byExpiry = (a: FridgeItem, b: FridgeItem) =>
   (daysUntil(a.expires_at) ?? 9999) - (daysUntil(b.expires_at) ?? 9999) || a.name.localeCompare(b.name)
+
+// Ghost foods shown on an empty shelf, matching what usually lives there.
+const EMPTY_ART: Record<string, string[]> = {
+  'Top shelf': ['milk', 'cheese', 'yogurt'],
+  'Middle shelf': ['pizza', 'drumstick', 'bowl'],
+  'Crisper drawer': ['apple', 'carrot', 'broccoli'],
+  Door: ['water', 'juice', 'ketchup'],
+  'Use first  →': ['apple', 'milk', 'cheese'],
+}
 
 type Section = { title: string; items: FridgeItem[] }
 
@@ -32,6 +43,8 @@ export function FridgeShelves({ items, sort, filtered, scroll = false }: {
 }) {
   const [width, setWidth] = useState(0)
   const { width: screen } = useWindowDimensions()
+  const ICE = useIce()
+  const { c } = useTheme()
   const minCard = screen < 600 ? CARD_MIN_WIDTH_PHONE : CARD_MIN_WIDTH
   const pad = screen < 600 ? 12 : PAD
   const gap = screen < 600 ? 10 : GAP
@@ -62,11 +75,12 @@ export function FridgeShelves({ items, sort, filtered, scroll = false }: {
         <View className="flex-row items-end" style={{ gap, minHeight: row.length ? undefined : 64 }}>
           {row.map((item, i) => <ItemCard key={item.id} item={item} index={r * perRow + i} width={cardWidth} />)}
           {row.length === 0 && (
-            <View className="flex-1 flex-row items-center justify-center gap-2 pb-3">
-              <MaterialCommunityIcons name={frozen ? 'snowflake' : 'fridge-outline'} size={16} color={frozen ? ICE.glass : '#b7c6bf'} />
-              <Text className="text-[13px]" style={{ color: frozen ? ICE.text : '#8a9a93' }}>
-                {frozen ? 'Freezer’s empty. Use the ❄ on a card to freeze something.' : 'Nothing on this shelf'}
-              </Text>
+            <View className="flex-1 pb-2">
+              <EmptySpot
+                art={frozen ? ['ice cream', 'peas'] : EMPTY_ART[section.title] ?? ['apple', 'milk']}
+                text={frozen ? 'Freezer’s empty. Use the ❄ on a card to freeze something.' : filtered ? 'Nothing here matches' : 'Nothing here yet'}
+                color={frozen ? ICE.text : undefined}
+              />
             </View>
           )}
         </View>
@@ -78,28 +92,25 @@ export function FridgeShelves({ items, sort, filtered, scroll = false }: {
   return (
     <View
       onLayout={e => setWidth(e.nativeEvent.layout.width)}
-      className="overflow-hidden rounded-[28px] border-[5px] border-[#e3ebe7] bg-frost"
-      style={[{ shadowColor: '#17251f', shadowOpacity: 0.06, shadowRadius: 24, shadowOffset: { width: 0, height: 10 } }, scroll ? { flex: 1, minHeight: 0 } : null]}
+      className="overflow-hidden rounded-[28px] border-[5px] border-enamel-edge bg-frost"
+      style={[{ shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 24, shadowOffset: { width: 0, height: 10 } }, scroll ? { flex: 1, minHeight: 0 } : null]}
     >
       <Body scroll={scroll}>
       {/* Fridge light */}
       <View className="items-center pt-2">
-        <View className="h-1.5 w-24 rounded-full bg-white" style={{ shadowColor: '#fff8d6', shadowOpacity: 1, shadowRadius: 14 }} />
+        <View className="h-1.5 w-24 rounded-full bg-surface" style={{ shadowColor: '#fff8d6', shadowOpacity: 1, shadowRadius: 14 }} />
       </View>
 
       {width > 0 && fridge.map(section => renderSection(section, false))}
-      {width > 0 && fridge.length === 0 && !showFreezer && (
-        <View className="items-center py-16">
-          <Text className="text-mute">No items match this filter.</Text>
-        </View>
-      )}
+      {width > 0 && fridge.length === 0 && !showFreezer && <View style={{ height: 320 }}><WholeFridgeEmpty filtered /></View>}
+      {width > 0 && items.length === 0 && !filtered && <WholeFridgeEmpty filtered={false} />}
       <View className="h-4" />
 
       {width > 0 && showFreezer && (
         <>
           {/* Door seal between compartments */}
-          <View className="h-3 bg-[#e3ebe7]">
-            <View className="mx-6 mt-1 h-1 rounded-full bg-[#d3ddd8]" />
+          <View className="h-3 bg-enamel-edge">
+            <View className="mx-6 mt-1 h-1 rounded-full bg-line" />
           </View>
           <View style={{ backgroundColor: ICE.bg }}>
             <View className="flex-row items-center justify-between pt-3" style={{ paddingHorizontal: pad }}>
@@ -127,17 +138,20 @@ function Body({ scroll, children }: { scroll: boolean; children: ReactNode }) {
 }
 
 function GlassShelf({ frozen, pad }: { frozen: boolean; pad: number }) {
+  const ICE = useIce()
+  const { c } = useTheme()
   return (
     <View style={{ marginHorizontal: -pad + 4, marginTop: 6 }}>
-      <View className="h-[3px] rounded-t-sm bg-white" />
-      <View className="h-2" style={{ backgroundColor: frozen ? ICE.glass : '#cfe2db', opacity: 0.85 }} />
-      <View className="h-2.5 rounded-b-xl" style={{ backgroundColor: frozen ? ICE.line : '#e6efeb' }} />
+      <View className="h-[3px] rounded-t-sm bg-surface" style={{ opacity: 0.8 }} />
+      <View className="h-2" style={{ backgroundColor: frozen ? ICE.glass : c.glass, opacity: 0.85 }} />
+      <View className="h-2.5 rounded-b-xl" style={{ backgroundColor: frozen ? ICE.line : c.frost }} />
     </View>
   )
 }
 
 /** A row of little frost crystals under the freezer label. */
 function FrostEdge() {
+  const ICE = useIce()
   return (
     <View className="mt-1.5 flex-row justify-between overflow-hidden px-3" style={{ opacity: 0.55 }}>
       {Array.from({ length: 24 }, (_, i) => (

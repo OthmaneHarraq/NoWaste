@@ -9,7 +9,8 @@ import { ActionNeededPanel } from '@/fridge/components/ActionNeededPanel'
 import { FridgeShelves, type SortMode } from '@/fridge/components/FridgeShelves'
 import { FridgeView } from '@/fridge/components/FridgeView'
 import { LiveFeed } from '@/fridge/components/LiveFeed'
-import { FRESHNESS, ICE } from '@/fridge/components/visuals'
+import { FRESHNESS, useFreshHex, useIce } from '@/fridge/components/visuals'
+import { useTheme } from '@/ui/ThemeProvider'
 
 // OWNER: phone app team. The fridge dashboard: what's inside, what to use first, and what
 // the camera just saw. Updates live (Supabase Realtime) — no refresh needed.
@@ -21,7 +22,7 @@ const WEB = Platform.OS === 'web'
 type ViewMode = 'normal' | 'fridge'
 const VIEW_KEY = 'nowaste:view'
 // Web-only dot texture behind the page (same as Activity and Impact).
-const DOTS = WEB ? 'bg-[radial-gradient(#dde6e1_1.2px,transparent_1.2px)] bg-[length:20px_20px]' : ''
+const DOTS = WEB ? 'bg-[radial-gradient(#dde6e1_1.2px,transparent_1.2px)] bg-[length:20px_20px] dark:bg-[radial-gradient(#1f2a25_1.2px,transparent_1.2px)]' : ''
 
 function savedView(): ViewMode {
   try {
@@ -101,7 +102,7 @@ export default function FridgeScreen() {
   const header = (
     <View className="flex-row flex-wrap items-end justify-between gap-3">
       <View>
-        <Text className={`${phone ? 'text-[24px]' : 'text-[28px]'} font-extrabold tracking-tight text-ink`}>What’s in the fridge</Text>
+        <Text className={`${phone ? 'text-[28px]' : 'text-[34px]'} font-display-bold leading-[1.15] text-ink`}>What’s in the fridge</Text>
         <Text className="mt-0.5 text-sm text-ink-soft">
           {current.length} items · {fresh} fresh{frozen ? ` · ${frozen} frozen` : ''}{pending ? ` · ${pending} taken out` : ''}
         </Text>
@@ -159,12 +160,13 @@ const WHERE_OPTIONS: { v: Where; label: string }[] = [{ v: 'all', label: 'Everyw
 const SORT_OPTIONS: { v: SortMode; label: string }[] = [{ v: 'shelf', label: 'By shelf' }, { v: 'expiry', label: 'By expiry' }]
 
 function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMode) => void }) {
+  const { c } = useTheme()
   const options: { v: ViewMode; label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }[] = [
     { v: 'normal', label: 'Normal', icon: 'view-grid-outline' },
     { v: 'fridge', label: 'Fridge', icon: 'fridge-outline' },
   ]
   return (
-    <View className="flex-row rounded-xl border border-line bg-white p-1" accessibilityRole="tablist">
+    <View className="flex-row rounded-xl border border-line bg-surface p-1" accessibilityRole="tablist">
       {options.map(o => {
         const on = value === o.v
         return (
@@ -175,8 +177,8 @@ function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMo
             accessibilityState={{ selected: on }}
             className={`flex-row items-center gap-1.5 rounded-lg px-3 py-1.5 ${on ? 'bg-ink' : 'active:bg-frost'}`}
           >
-            <MaterialCommunityIcons name={o.icon} size={15} color={on ? '#fff' : '#4c5d55'} />
-            <Text className={`text-[13px] font-semibold ${on ? 'text-white' : 'text-ink-soft'}`}>{o.label}</Text>
+            <MaterialCommunityIcons name={o.icon} size={15} color={on ? c.onInk : c.textSoft} />
+            <Text className={`text-[13px] font-semibold ${on ? 'text-on-ink' : 'text-ink-soft'}`}>{o.label}</Text>
           </Pressable>
         )
       })}
@@ -186,26 +188,27 @@ function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMo
 
 function AddItem({ full }: { full: boolean }) {
   const { addItem } = useFridge()
+  const { c } = useTheme()
   const [name, setName] = useState('')
   async function submit() {
     if (!name.trim()) return
     if (await addItem(name.trim())) setName('')
   }
   return (
-    <View className={`flex-row items-center rounded-xl border border-line bg-white pl-3 ${full ? 'w-full' : ''}`}>
-      <MaterialCommunityIcons name="plus" size={16} color="#8a9a93" />
+    <View className={`flex-row items-center rounded-xl border border-line bg-surface pl-3 ${full ? 'w-full' : ''}`}>
+      <MaterialCommunityIcons name="plus" size={16} color={c.muted} />
       <TextInput
         value={name}
         onChangeText={setName}
         onSubmitEditing={submit}
         placeholder="Add by hand (e.g. milk)"
-        placeholderTextColor="#8a9a93"
+        placeholderTextColor={c.muted}
         returnKeyType="done"
         className={`${full ? 'flex-1' : 'w-48'} px-2 py-2.5 text-sm text-ink`}
         style={{ outlineStyle: 'none' } as object}
       />
       <Pressable onPress={submit} className="m-1 rounded-lg bg-ink px-3 py-1.5 active:opacity-80">
-        <Text className="text-[13px] font-semibold text-white">Add</Text>
+        <Text className="text-[13px] font-semibold text-on-ink">Add</Text>
       </Pressable>
     </View>
   )
@@ -219,23 +222,24 @@ function Chip({ label, count, active, onPress, icon, color }: {
   icon?: keyof typeof MaterialCommunityIcons.glyphMap
   color?: string
 }) {
+  const { c } = useTheme()
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${active ? 'border-ink bg-ink' : 'border-line bg-white active:bg-frost'}`}
+      className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${active ? 'border-ink bg-ink' : 'border-line bg-surface active:bg-frost'}`}
     >
-      {icon && <MaterialCommunityIcons name={icon} size={14} color={active ? '#fff' : color} />}
-      <Text className={`text-[13px] font-semibold ${active ? 'text-white' : 'text-ink'}`}>{label}</Text>
-      <Text className={`text-xs ${active ? 'text-[#b7c6bf]' : 'text-mute'}`}>{count}</Text>
+      {icon && <MaterialCommunityIcons name={icon} size={14} color={active ? c.onInk : color} />}
+      <Text className={`text-[13px] font-semibold ${active ? 'text-on-ink' : 'text-ink'}`}>{label}</Text>
+      <Text className={`text-xs ${active ? 'text-mute' : 'text-mute'}`}>{count}</Text>
     </Pressable>
   )
 }
 
 function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { v: T; label: string }[] }) {
   return (
-    <View className="flex-row rounded-xl bg-[#e8eeeb] p-0.5">
+    <View className="flex-row rounded-xl bg-frost p-0.5">
       {options.map(o => (
-        <Pressable key={o.v} onPress={() => onChange(o.v)} className={`rounded-[10px] px-3 py-1.5 ${value === o.v ? 'bg-white' : ''}`}>
+        <Pressable key={o.v} onPress={() => onChange(o.v)} className={`rounded-[10px] px-3 py-1.5 ${value === o.v ? 'bg-surface' : ''}`}>
           <Text className={`text-[13px] font-semibold ${value === o.v ? 'text-ink' : 'text-ink-soft'}`}>{o.label}</Text>
         </Pressable>
       ))}
@@ -244,20 +248,23 @@ function Segmented<T extends string>({ value, onChange, options }: { value: T; o
 }
 
 function Legend() {
+  const hex = useFreshHex()
+  const ice = useIce()
+  const { c } = useTheme()
   return (
     <View className="flex-row flex-wrap gap-4 px-1">
       {(['fresh', 'soon', 'expired'] as const).map(k => (
         <View key={k} className="flex-row items-center gap-1.5">
-          <View style={{ width: 14, height: 4, borderRadius: 2, backgroundColor: FRESHNESS[k].hex }} />
+          <View style={{ width: 14, height: 4, borderRadius: 2, backgroundColor: hex(k) }} />
           <Text className="text-xs text-ink-soft">{k === 'fresh' ? 'Fresh' : k === 'soon' ? 'Use within 2 days' : 'Past its date'}</Text>
         </View>
       ))}
       <View className="flex-row items-center gap-1.5">
-        <View style={{ width: 14, height: 10, borderRadius: 3, borderWidth: 1, borderStyle: 'dashed', borderColor: '#8a9a93' }} />
+        <View style={{ width: 14, height: 10, borderRadius: 3, borderWidth: 1, borderStyle: 'dashed', borderColor: c.muted }} />
         <Text className="text-xs text-ink-soft">Taken out, waiting to see if it comes back</Text>
       </View>
       <View className="flex-row items-center gap-1.5">
-        <MaterialCommunityIcons name="snowflake" size={12} color={ICE.icon} />
+        <MaterialCommunityIcons name="snowflake" size={12} color={ice.icon} />
         <Text className="text-xs text-ink-soft">Frozen: dated by freezer shelf life</Text>
       </View>
     </View>

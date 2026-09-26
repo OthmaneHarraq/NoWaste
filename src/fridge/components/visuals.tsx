@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { CATEGORIES } from '../categories'
 import type { Freshness } from '../freshness'
 import type { FoodCategory } from '../types'
+import { useTheme } from '@/ui/ThemeProvider'
 
 // Freshness → classes/colors. The ONLY place green/amber/red are assigned meaning.
 export const FRESHNESS = {
@@ -14,7 +15,19 @@ export const FRESHNESS = {
 } satisfies Record<Freshness, unknown>
 
 // Freezer accent, same values as the ice-* tokens in src/global.css. Blue = cold, never freshness.
+// ICE is the light set (kept for static uses); components use useIce() so it follows dark mode.
 export const ICE = { bg: '#eaf3fa', soft: '#f1f7fc', line: '#cfe1ef', glass: '#bcd6ea', icon: '#5b8fb9', text: '#3f6a8f' }
+
+export function useIce() {
+  const { c } = useTheme()
+  return { bg: c.iceBg, soft: c.iceBg, line: c.iceLine, glass: c.iceGlass, icon: c.ice, text: c.iceText }
+}
+
+/** Freshness → hex for the current theme (dots, lines, rings). Same thresholds, brighter in dark. */
+export function useFreshHex() {
+  const { c } = useTheme()
+  return (f: Freshness) => ({ fresh: c.fresh, soon: c.soon, expired: c.spoiled, unknown: c.unknown })[f]
+}
 
 export function CategoryIcon({ category, size = 40 }: { category: FoodCategory; size?: number }) {
   const c = CATEGORIES[category]
@@ -31,9 +44,10 @@ export function CategoryIcon({ category, size = 40 }: { category: FoodCategory; 
 
 export function FreshnessChip({ freshness, label }: { freshness: Freshness; label: string }) {
   const f = FRESHNESS[freshness]
+  const hex = useFreshHex()
   return (
     <View className={`flex-row items-center gap-1.5 self-start rounded-full border px-2 py-0.5 ${f.chip}`}>
-      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: f.hex }} />
+      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: hex(freshness) }} />
       <Text className={`text-xs font-semibold ${f.text}`}>{label}</Text>
     </View>
   )
