@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { useHousehold } from '@/household'
 import { recordEvent } from '@/data/fridge'
 import { colors } from '@/ui/theme'
@@ -17,7 +18,7 @@ import { BarcodePanel } from '@/camera/BarcodePanel'
 //   1. CameraFeed           live webcam (USB or built-in) → <video>
 //   2. useMotionDetector    tiny frames ~7x/sec; notices when something moves
 //   3. useFrameRecorder     keeps frames from before / during / after each movement
-//   4. detectItems          sends 4 of them to the detect-items Edge Function, which asks
+//   4. detectItems          sends 6 of them (before, 4 moving, after) to the detect-items Edge Function, which asks
 //                           the vision AI and logs the result with record_event
 //   5. DetectionPanel       "Added milk" with Undo / Fix; Fridge + Activity update live
 //   +  BarcodePanel         packaged items: barcode → Open Food Facts → confirm. A movement
@@ -54,6 +55,14 @@ export default function CameraScreen() {
   const nextId = useRef(1)
   const lastBarcodeAt = useRef(0)
   const [barcodeOn, setBarcodeOn] = useState(true)
+  // Green flash + "Barcode read" badge on the preview for a moment after a successful read
+  const [barcodeFlashAt, setBarcodeFlashAt] = useState(0)
+  const flashing = barcodeFlashAt > 0
+  useEffect(() => {
+    if (!barcodeFlashAt) return
+    const t = setTimeout(() => setBarcodeFlashAt(0), 1400)
+    return () => clearTimeout(t)
+  }, [barcodeFlashAt])
 
   const addEntry = (e: DetectionEntry) => setEntries(list => [e, ...list].slice(0, 4))
   const updateEntry = (id: number, patch: Partial<DetectionEntry>) =>
@@ -96,8 +105,16 @@ export default function CameraScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
       {/* Green border while something is moving */}
-      <View style={[styles.feedBorder, active && styles.feedBorderActive]}>
+      <View style={[styles.feedBorder, active && styles.feedBorderActive, flashing && styles.feedBorderRead]}>
         <CameraFeed onVideoReady={setVideo} showBarcodeGuide={barcodeOn} />
+        {flashing && (
+          <View pointerEvents="none" style={styles.readBadgeWrap}>
+            <View style={styles.readBadge}>
+              <Ionicons name="checkmark-circle" size={18} color="#fff" />
+              <Text style={styles.readBadgeText}>Barcode read</Text>
+            </View>
+          </View>
+        )}
       </View>
       {Platform.OS === 'web' && (
         <BarcodePanel
@@ -106,6 +123,7 @@ export default function CameraScreen() {
           enabled={barcodeOn}
           onEnabledChange={setBarcodeOn}
           onHandled={() => (lastBarcodeAt.current = Date.now())}
+          onRead={() => setBarcodeFlashAt(Date.now())}
         />
       )}
       {Platform.OS === 'web' && (
@@ -139,8 +157,13 @@ export default function CameraScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  feedBorder: { borderRadius: 19, borderWidth: 3, borderColor: 'transparent' },
+  // Small preview: it's for checking the aim, not for watching. Scanning still uses full resolution.
+  feedBorder: { width: '100%', maxWidth: 340, alignSelf: 'center', borderRadius: 19, borderWidth: 3, borderColor: 'transparent' },
   feedBorderActive: { borderColor: colors.primary },
+  feedBorderRead: { borderColor: '#22c55e', borderWidth: 5, borderRadius: 21 },
+  readBadgeWrap: { position: 'absolute', top: 10, left: 0, right: 0, alignItems: 'center' },
+  readBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#16a34a', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
+  readBadgeText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   heading: { fontSize: 17, fontWeight: '700', color: colors.text },
   sub: { fontSize: 13, color: colors.muted, marginTop: 4, marginBottom: 12 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },

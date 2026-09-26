@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera'
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator'
@@ -39,6 +39,14 @@ export default function ScanScreen() {
   const lastSeen = useRef(new Map<string, number>())
   const camera = useRef<CameraView>(null)
   const [dateMode, setDateMode] = useState<DateMode | null>(null)
+  // Aim box flashes green after a successful read (the phone also vibrates)
+  const [justRead, setJustRead] = useState(false)
+  useEffect(() => {
+    if (!flow.readAt) return
+    setJustRead(true)
+    const t = setTimeout(() => setJustRead(false), 1200)
+    return () => clearTimeout(t)
+  }, [flow.readAt])
 
   function onScanned({ data }: BarcodeScanningResult) {
     const now = Date.now()
@@ -97,7 +105,7 @@ export default function ScanScreen() {
   const readingDate = !!dateMode
   const aimLabel = readingDate
     ? dateMode.stage === 'aim' ? 'Fill the box with the printed date' : dateMode.stage === 'reading' ? 'Reading…' : ''
-    : flow.pending ? 'Got it' : 'Point at a barcode'
+    : justRead ? '✓ Barcode read' : flow.pending ? 'Got it' : 'Point at a barcode'
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -113,7 +121,7 @@ export default function ScanScreen() {
           />
         )}
         <View pointerEvents="none" style={styles.aimWrap}>
-          <View style={[styles.aim, readingDate && styles.aimDate]} />
+          <View style={[styles.aim, readingDate && styles.aimDate, justRead && !readingDate && styles.aimRead]} />
           {!!aimLabel && <Text style={styles.aimText}>{aimLabel}</Text>}
         </View>
         {dateMode?.stage === 'aim' && (
@@ -223,6 +231,7 @@ const styles = StyleSheet.create({
   aimWrap: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   aim: { width: '75%', height: '38%', borderWidth: 2, borderColor: 'rgba(255,255,255,0.9)', borderRadius: 14 },
   aimDate: { width: '80%', height: '22%', borderColor: '#ffd36b' },
+  aimRead: { borderColor: '#22c55e', borderWidth: 4, backgroundColor: 'rgba(34,197,94,0.15)' },
   aimText: { color: '#fff', fontWeight: '600', marginTop: 10, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 3 },
   shutter: {
     position: 'absolute', bottom: 16, alignSelf: 'center', width: 64, height: 64, borderRadius: 32,

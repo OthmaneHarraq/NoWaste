@@ -4,6 +4,7 @@ import { recordEvent, undoEvent } from '@/data/fridge'
 import type { FridgeEvent } from '@/types/db'
 import { lookupBarcode, saveBarcode, type Product } from './productLookup'
 import { normalizeBarcode } from './barcode'
+import { barcodeReadFeedback } from './feedback'
 
 const AUTO_CONFIRM_SECONDS = 5
 
@@ -24,6 +25,8 @@ export function useBarcodeFlow(householdId: string | undefined, options: { onLog
   const [pending, setPending] = useState<PendingBarcode | null>(null)
   const [recent, setRecent] = useState<FridgeEvent[]>([])
   const [error, setError] = useState<string | null>(null)
+  /** Time of the last successful read, for a quick "got it" flash in the UI. */
+  const [readAt, setReadAt] = useState(0)
   const pendingRef = useRef(pending)
   pendingRef.current = pending
   const onLogged = useRef(options.onLogged)
@@ -34,6 +37,8 @@ export function useBarcodeFlow(householdId: string | undefined, options: { onLog
     if (pendingRef.current || !householdId) return false
     const code = normalizeBarcode(rawCode)
     if (code.length < 8) return false
+    barcodeReadFeedback() // beep (web) / vibrate (phone)
+    setReadAt(Date.now())
     handle(householdId, code)
     return true
   }
@@ -87,5 +92,5 @@ export function useBarcodeFlow(householdId: string | undefined, options: { onLog
     else setRecent(list => list.filter(e => e.id !== ev.id))
   }
 
-  return { pending, recent, error, submit, confirm, nameUnknown, undo, cancel: () => setPending(null) }
+  return { pending, recent, error, readAt, submit, confirm, nameUnknown, undo, cancel: () => setPending(null) }
 }

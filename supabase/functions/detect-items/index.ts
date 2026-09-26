@@ -2,7 +2,7 @@
 //
 // POST /functions/v1/detect-items
 //   Authorization: Bearer <user's access token>   (supabase.functions.invoke adds this)
-//   { "household_id": "...", "frames": ["<base64 jpeg>", ...] }   // 1–4 frames in time order
+//   { "household_id": "...", "frames": ["<base64 jpeg>", ...] }   // up to 8 frames in time order (app sends 6)
 // → { "events": [ ...rows from record_event... ], "detections": [...] }
 //
 // Secrets (Supabase dashboard → Edge Functions → Secrets, or `supabase secrets set`):
@@ -17,23 +17,23 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { askVision } from '../_shared/vision.ts'
 
 const MIN_CONFIDENCE = 0.4 // below this, show the guess in the app but don't log it
-const MAX_FRAMES = 4
+const MAX_FRAMES = 8 // the app sends 6: before, 4 during, after
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const PROMPT = `You are the food-tracking camera for a household fridge. These 4 frames come from one
+const PROMPT = `You are the food-tracking camera for a household fridge. These frames come from one
 camera, in time order, around a single movement:
-  frame 1 = just BEFORE the movement
-  frames 2 and 3 = DURING the movement (a hand is usually holding something)
-  frame 4 = just AFTER the movement
+  the FIRST frame = just BEFORE the movement
+  the frames in between = DURING the movement (a hand is usually holding something)
+  the LAST frame = just AFTER the movement
 
 Task: name each food or drink item that a hand carries during the movement, and decide its direction:
   "in"      = the item arrives with the hand and is put down / left behind, or is carried off toward
-              the fridge side and is gone in frame 4 (it went into the fridge)
-  "out"     = the item was sitting there in frame 1, or is taken from the fridge side, and leaves with the hand
+              the fridge side and is gone in the last frame (it went into the fridge)
+  "out"     = the item was sitting there in the first frame, or is taken from the fridge side, and leaves with the hand
   "unknown" = you can see the item but can't tell the direction
 The fridge itself may not be visible (e.g. during testing at a desk). Use the before/after frames to decide.
 

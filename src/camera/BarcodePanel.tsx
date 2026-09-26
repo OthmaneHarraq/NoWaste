@@ -12,14 +12,19 @@ type Props = {
   onEnabledChange: (on: boolean) => void
   /** Tells the Camera tab a barcode handled this movement, so it doesn't also ask the AI. */
   onHandled?: () => void
+  /** Called the moment a barcode is read (for the green flash on the preview). */
+  onRead?: () => void
 }
 
 /** Laptop fridge camera: reads barcodes from the live <video>, then runs the shared barcode flow. */
-export function BarcodePanel({ video, householdId, enabled, onEnabledChange: setEnabled, onHandled }: Props) {
+export function BarcodePanel({ video, householdId, enabled, onEnabledChange: setEnabled, onHandled, onRead }: Props) {
   const flow = useBarcodeFlow(householdId, { onLogged: onHandled })
 
   const { engine } = useBarcodeScanner(video, enabled && !!householdId, code => {
-    if (flow.submit(code)) onHandled?.()
+    if (flow.submit(code)) {
+      onHandled?.()
+      onRead?.()
+    }
   })
 
   return (
