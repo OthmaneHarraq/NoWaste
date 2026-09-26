@@ -66,6 +66,30 @@ export function templateInsights(p: WastePatterns): string[] {
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
+export type ShoppingSuggestion = {
+  name: string
+  category: FoodCategory
+  /** Short action for the next shop: "Buy frozen", "Smaller size"… */
+  action: string
+  /** One line of why, from the counts. */
+  detail: string
+}
+
+// Sold in smaller packs, so "smaller size" is a real option at the store.
+const SIZED: FoodCategory[] = ['dairy', 'beverage', 'condiment']
+
+/** One concrete buying change per repeatedly-wasted food (same stats as the insights). */
+export function shoppingSuggestions(p: WastePatterns): ShoppingSuggestion[] {
+  return p.items.map(({ name, category, wasted, saved }) => {
+    const of = `Wasted ${wasted} of ${wasted + saved} in ${p.days} days`
+    if (category === 'produce' && SOLD_FROZEN.test(name)) return { name, category, action: 'Buy frozen', detail: `${of}. Frozen keeps for months.` }
+    if (saved === 0 && wasted >= 2) return { name, category, action: 'Skip next shop', detail: `Wasted ${times(wasted)}, never finished.` }
+    if (SIZED.includes(category)) return { name, category, action: 'Smaller size', detail: `${of}.` }
+    if (wasted > saved) return { name, category, action: 'Buy half as much', detail: `${of}.` }
+    return { name, category, action: 'Buy a little less', detail: `${of}.` }
+  })
+}
+
 // One Edge Function call per distinct set of stats per app session; the server caches too.
 const aiCache = new Map<string, Promise<string[] | null>>()
 

@@ -4,6 +4,7 @@ import { freshnessOf } from '@/fridge/freshness'
 import { ActionNeededPanel } from '@/fridge/components/ActionNeededPanel'
 import { InsightsCard } from '@/fridge/components/InsightsCard'
 import { RecipesCard } from '@/fridge/components/RecipesCard'
+import { ShoppingCard } from '@/fridge/components/ShoppingCard'
 import { FadeIn } from '@/ui/motion'
 
 // OWNER: phone app team. Everything that needs a decision: what to eat or bin now, recipes
@@ -36,6 +37,7 @@ export default function TodoScreen() {
         <View className="gap-5" style={twoColumn ? { flex: 1 } : undefined}>
           <RecipesCard delay={80} />
           <InsightsCard delay={160} />
+          <ShoppingCard delay={240} />
         </View>
       </View>
     </ScrollView>
