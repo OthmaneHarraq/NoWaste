@@ -19,6 +19,28 @@ import { GUIDE_BOX } from './barcode'
 
 const STORAGE_KEY = 'nowaste.cameraDeviceId'
 
+/**
+ * Wait for real frames, then check whether the picture is one flat green colour (what some
+ * virtual cameras send when they can't produce the requested resolution).
+ */
+async function isGreenScreen(video: HTMLVideoElement): Promise<boolean> {
+  await new Promise(r => setTimeout(r, 900))
+  if (video.readyState < 2 || !video.videoWidth) return false
+  const c = document.createElement('canvas')
+  c.width = 16
+  c.height = 12
+  const ctx = c.getContext('2d', { willReadFrequently: true })!
+  ctx.drawImage(video, 0, 0, 16, 12)
+  const d = ctx.getImageData(0, 0, 16, 12).data
+  let r = 0, g = 0, b = 0, spread = 0
+  const n = d.length / 4
+  for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2] }
+  r /= n; g /= n; b /= n
+  for (let i = 0; i < d.length; i += 4) spread += Math.abs(d[i + 1] - g)
+  // Strongly green on average, and almost no variation across the picture
+  return g > 90 && g > r * 2 && g > b * 2 && spread / n < 8
+}
+
 // We save the camera's id AND its name: browsers sometimes hand out new ids
 // (private windows, some browsers), but the name ("Logitech C270") stays the same.
 type SavedCamera = { id: string; label: string }
@@ -88,16 +110,22 @@ export default function CameraFeed({ onVideoReady, facing = 'environment', showB
         // 1080p when the webcam supports it: barcodes need the detail (motion detection
         // and AI frames shrink it anyway, so there's no cost there)
         const size = { width: { ideal: 1920 }, height: { ideal: 1080 } }
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
+        const open = async (id: string | null, withSize: boolean) =>
+          navigator.mediaDevices.getUserMedia({
             // A chosen camera wins; otherwise "environment" = back camera on phones, default webcam on laptops
-            video: deviceId ? { deviceId: { exact: deviceId }, ...size } : { facingMode: facing, ...size },
+            video: {
+              ...(id ? { deviceId: { exact: id } } : { facingMode: facing }),
+              ...(withSize ? size : {}),
+            },
             audio: false,
           })
+
+        try {
+          stream = await open(deviceId, true)
         } catch (e: any) {
           // The saved id no longer exists (unplugged, or the browser issued new ids) → start the default camera
           if (!deviceId || (e?.name !== 'OverconstrainedError' && e?.name !== 'NotFoundError')) throw e
-          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, ...size }, audio: false })
+          stream = await open(null, true)
         }
         if (cancelled) {
           stream.getTracks().forEach(t => t.stop())
@@ -122,6 +150,29 @@ export default function CameraFeed({ onVideoReady, facing = 'environment', showB
         const video = videoRef.current!
         video.srcObject = stream
         await video.play()
+
+        // Some virtual cameras (DroidCam, OBS, phone-as-webcam apps) only support their own
+        // resolution and send a solid green picture when asked for 1080p. If that happens,
+        // reopen the same camera and let it pick its own size.
+        if (await isGreenScreen(video)) {
+          stream.getTracks().forEach(t => t.stop())
+          if (cancelled) return
+          stream = await open(startedId, false).catch(() => open(null, false))
+          if (cancelled) {
+            stream.getTracks().forEach(t => t.stop())
+            return
+          }
+          video.srcObject = stream
+          await video.play()
+          if (await isGreenScreen(video)) {
+            if (cancelled) return
+            setStatus('error')
+            setError('This camera is sending a blank green picture. If it’s a phone-as-webcam app (DroidCam…), make sure the phone is connected in its app, then retry, or pick another camera.')
+            refreshCameras()
+            return
+          }
+        }
+        if (cancelled) return
         setStatus('live')
         onVideoReady?.(video)
       } catch (e: any) {
@@ -131,7 +182,7 @@ export default function CameraFeed({ onVideoReady, facing = 'environment', showB
           e?.name === 'NotAllowedError' ? 'Camera permission was blocked. Allow it in the address bar, then retry.'
           : e?.name === 'NotFoundError' ? 'No camera found on this device.'
           : e?.name === 'NotReadableError' ? 'The camera is in use by another app (Zoom, Teams…). Close it and retry.'
-          : `Couldn’t start the camera: ${e?.message ?? e}`
+          : `Couldn’t start the camera: ${e?.message || e?.name || e}`
         )
       }
     }
