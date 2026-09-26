@@ -46,7 +46,10 @@ export function templateInsights(p: WastePatterns): string[] {
         : 'Try buying it frozen: it keeps for months and cooks the same.')
       : TIP[top.category]
     lines.push(`You’ve wasted ${top.name} ${times(top.wasted)} in the last ${p.days} days. ${tip}`)
-    if (second && second.wasted >= 2) lines.push(`${cap(second.name)} too: wasted ${times(second.wasted)}.`)
+    if (second && second.wasted >= 2) {
+      const tip = second.category === top.category ? '' : ` ${TIP[second.category]}`
+      lines.push(`${cap(second.name)} went to waste ${times(second.wasted)} as well.${tip}`)
+    }
   }
 
   const cat = p.categories[0]

@@ -11,19 +11,20 @@ type IconName = keyof typeof MaterialCommunityIcons.glyphMap
 
 const NAV: Record<string, { label: string; icon: IconName; hint: string }> = {
   index:    { label: 'Fridge',   icon: 'fridge-outline',        hint: 'What’s inside' },
+  todo:     { label: 'To do',    icon: 'clipboard-check-outline', hint: 'Use up, shop smart' },
   activity: { label: 'Activity', icon: 'timeline-text-outline', hint: 'In, out, used' },
   impact:   { label: 'Impact',   icon: 'leaf',                  hint: 'Waste avoided' },
   camera:   { label: 'Camera',   icon: 'camera-outline',        hint: 'Detector' },
   settings: { label: 'Settings', icon: 'cog-outline',           hint: 'Fridge & account' },
 }
-const PRIMARY = ['index', 'activity', 'impact']
+const PRIMARY = ['index', 'todo', 'activity', 'impact']
 
 /**
  * Wide-screen navigation (web/tablet): brand, the three main destinations with room to
  * breathe, device links, and a small "how are we doing" card anchoring the bottom.
  */
 export function Sidebar({ state, descriptors, navigation, fridgeName }: BottomTabBarProps & { fridgeName: string }) {
-  const { actionNeeded, activity, history, now } = useFridge()
+  const { actionNeeded, current, activity, history, now } = useFridge()
 
   const visible = state.routes.filter(r => {
     const style = descriptors[r.key]?.options.tabBarItemStyle as { display?: string } | undefined
@@ -35,7 +36,8 @@ export function Sidebar({ state, descriptors, navigation, fridgeName }: BottomTa
   const expired = actionNeeded.filter(i => freshnessOf(i, now) === 'expired').length
   const today = activity.filter(a => !a.undone && new Date(a.at).toDateString() === now.toDateString()).length
   const badges: Record<string, { n: number; tone: 'alert' | 'warn' | 'quiet' } | undefined> = {
-    index: actionNeeded.length ? { n: actionNeeded.length, tone: expired ? 'alert' : 'warn' } : undefined,
+    index: current.length ? { n: current.length, tone: 'quiet' } : undefined,
+    todo: actionNeeded.length ? { n: actionNeeded.length, tone: expired ? 'alert' : 'warn' } : undefined,
     activity: today ? { n: today, tone: 'quiet' } : undefined,
   }
 

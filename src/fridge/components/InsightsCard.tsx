@@ -19,7 +19,7 @@ export function InsightsCard({ delay = 120 }: { delay?: number }) {
       <View className="rounded-3xl border border-line bg-surface p-5" style={shadow.card}>
         <View className="mb-3 flex-row items-start justify-between gap-3">
           <View className="flex-1">
-            <Text className="font-display text-[17px] text-ink">Shopping insights</Text>
+            <Text className="font-display text-[20px] text-ink">Shopping insights</Text>
             <Text className="mt-0.5 text-[13px] text-mute">From what went to waste, last 30 days</Text>
           </View>
           {source === 'ai' && (

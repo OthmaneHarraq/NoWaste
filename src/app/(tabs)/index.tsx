@@ -5,11 +5,9 @@ import { useFridge } from '@/fridge/FridgeProvider'
 import { CATEGORIES, CATEGORY_ORDER } from '@/fridge/categories'
 import { freshnessOf } from '@/fridge/freshness'
 import type { FoodCategory } from '@/fridge/types'
-import { ActionNeededPanel } from '@/fridge/components/ActionNeededPanel'
 import { FridgeShelves, type SortMode } from '@/fridge/components/FridgeShelves'
 import { FridgeView } from '@/fridge/components/FridgeView'
 import { LiveFeed } from '@/fridge/components/LiveFeed'
-import { RecipesCard } from '@/fridge/components/RecipesCard'
 import { useFreshHex, useIce } from '@/fridge/components/visuals'
 import { useTheme } from '@/ui/ThemeProvider'
 
@@ -131,8 +129,6 @@ export default function FridgeScreen() {
           {view === 'normal' && <Legend />}
         </View>
         <ScrollView style={{ width: 360, flexGrow: 0 }} contentContainerStyle={{ gap: 20, paddingBottom: 8 }} showsVerticalScrollIndicator={false}>
-          <ActionNeededPanel />
-          <RecipesCard />
           <LiveFeed />
         </ScrollView>
       </View>
@@ -144,8 +140,6 @@ export default function FridgeScreen() {
   return (
     <ScrollView className={`flex-1 bg-paper ${DOTS}`} contentContainerStyle={{ padding: phone ? 14 : 24, paddingBottom: 48 }}>
       <View className="gap-5">
-        <ActionNeededPanel />
-        <RecipesCard />
         <View className="gap-4">
           {header}
           {filters}

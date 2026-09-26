@@ -24,7 +24,7 @@ export function RecipesCard({ delay = 120 }: { delay?: number }) {
       <View className="rounded-3xl border border-line bg-surface p-5" style={shadow.card}>
         <View className="mb-3 flex-row items-center gap-2">
           <MaterialCommunityIcons name="chef-hat" size={18} color={c.textSoft} />
-          <Text className="font-display flex-1 text-[17px] text-ink">Use it up</Text>
+          <Text className="font-display flex-1 text-[20px] text-ink">Use it up</Text>
         </View>
 
         {state.status === 'empty' && (

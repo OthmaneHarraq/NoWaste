@@ -74,7 +74,9 @@ export async function askGemini(system: string, prompt: string, schema: object):
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.6, maxOutputTokens: 800, responseMimeType: 'application/json', responseSchema: schema },
+        // maxOutputTokens includes the model's thinking tokens, so leave headroom beyond the
+        // short JSON answer (cut-off output fails to parse and falls back to the template).
+        generationConfig: { temperature: 0.6, maxOutputTokens: 2048, responseMimeType: 'application/json', responseSchema: schema },
       }),
     })
     if (!res.ok) {
