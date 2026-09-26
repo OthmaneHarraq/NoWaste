@@ -1,19 +1,17 @@
-import { useState } from 'react'
-import { Text, View, useWindowDimensions } from 'react-native'
+import { useState, type ReactNode } from 'react'
+import { ScrollView, Text, View, useWindowDimensions } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { LOCATIONS } from '../categories'
 import { daysUntil } from '../freshness'
 import type { FridgeItem } from '../types'
 import { CARD_MIN_WIDTH, CARD_MIN_WIDTH_PHONE, ItemCard } from './ItemCard'
+import { ICE } from './visuals'
 
 export type SortMode = 'shelf' | 'expiry'
 
 const GAP = 12
 const PAD = 18
 const BORDER = 10 // 5px frame on each side
-
-// Freezer palette: a cool blue that never means freshness (that's green/amber/red).
-export const FROST = { bg: '#eaf3fa', line: '#cfe1ef', glass: '#bcd6ea', text: '#4a7aa0', icon: '#5b8fb9' }
 
 const byExpiry = (a: FridgeItem, b: FridgeItem) =>
   (daysUntil(a.expires_at) ?? 9999) - (daysUntil(b.expires_at) ?? 9999) || a.name.localeCompare(b.name)
@@ -25,7 +23,13 @@ type Section = { title: string; items: FridgeItem[] }
  * compartment, and on frosted shelves in the freezer below the door seal. "By shelf"
  * groups by location; "By expiry" lines each compartment up, use-first on top.
  */
-export function FridgeShelves({ items, sort, filtered }: { items: FridgeItem[]; sort: SortMode; filtered: boolean }) {
+export function FridgeShelves({ items, sort, filtered, scroll = false }: {
+  items: FridgeItem[]
+  sort: SortMode
+  filtered: boolean
+  /** Fill the parent and scroll inside the fridge frame (web); else grow with content. */
+  scroll?: boolean
+}) {
   const [width, setWidth] = useState(0)
   const { width: screen } = useWindowDimensions()
   const minCard = screen < 600 ? CARD_MIN_WIDTH_PHONE : CARD_MIN_WIDTH
@@ -59,8 +63,8 @@ export function FridgeShelves({ items, sort, filtered }: { items: FridgeItem[]; 
           {row.map((item, i) => <ItemCard key={item.id} item={item} index={r * perRow + i} width={cardWidth} />)}
           {row.length === 0 && (
             <View className="flex-1 flex-row items-center justify-center gap-2 pb-3">
-              <MaterialCommunityIcons name={frozen ? 'snowflake' : 'fridge-outline'} size={16} color={frozen ? FROST.glass : '#b7c6bf'} />
-              <Text className="text-[13px]" style={{ color: frozen ? FROST.text : '#8a9a93' }}>
+              <MaterialCommunityIcons name={frozen ? 'snowflake' : 'fridge-outline'} size={16} color={frozen ? ICE.glass : '#b7c6bf'} />
+              <Text className="text-[13px]" style={{ color: frozen ? ICE.text : '#8a9a93' }}>
                 {frozen ? 'Freezer’s empty. Use the ❄ on a card to freeze something.' : 'Nothing on this shelf'}
               </Text>
             </View>
@@ -75,8 +79,9 @@ export function FridgeShelves({ items, sort, filtered }: { items: FridgeItem[]; 
     <View
       onLayout={e => setWidth(e.nativeEvent.layout.width)}
       className="overflow-hidden rounded-[28px] border-[5px] border-[#e3ebe7] bg-frost"
-      style={{ shadowColor: '#17251f', shadowOpacity: 0.06, shadowRadius: 24, shadowOffset: { width: 0, height: 10 } }}
+      style={[{ shadowColor: '#17251f', shadowOpacity: 0.06, shadowRadius: 24, shadowOffset: { width: 0, height: 10 } }, scroll ? { flex: 1, minHeight: 0 } : null]}
     >
+      <Body scroll={scroll}>
       {/* Fridge light */}
       <View className="items-center pt-2">
         <View className="h-1.5 w-24 rounded-full bg-white" style={{ shadowColor: '#fff8d6', shadowOpacity: 1, shadowRadius: 14 }} />
@@ -96,13 +101,13 @@ export function FridgeShelves({ items, sort, filtered }: { items: FridgeItem[]; 
           <View className="h-3 bg-[#e3ebe7]">
             <View className="mx-6 mt-1 h-1 rounded-full bg-[#d3ddd8]" />
           </View>
-          <View style={{ backgroundColor: FROST.bg }}>
+          <View style={{ backgroundColor: ICE.bg }}>
             <View className="flex-row items-center justify-between pt-3" style={{ paddingHorizontal: pad }}>
               <View className="flex-row items-center gap-1.5">
-                <MaterialCommunityIcons name="snowflake" size={14} color={FROST.icon} />
-                <Text className="text-[11px] font-bold uppercase tracking-[2px]" style={{ color: FROST.text }}>Freezer</Text>
+                <MaterialCommunityIcons name="snowflake" size={14} color={ICE.icon} />
+                <Text className="text-[11px] font-bold uppercase tracking-[2px]" style={{ color: ICE.text }}>Freezer</Text>
               </View>
-              <Text className="text-[11px]" style={{ color: FROST.text }}>
+              <Text className="text-[11px]" style={{ color: ICE.text }}>
                 {freezerItems.length ? `${freezerItems.length} item${freezerItems.length === 1 ? '' : 's'} · keeps for months` : 'keeps for months'}
               </Text>
             </View>
@@ -112,16 +117,21 @@ export function FridgeShelves({ items, sort, filtered }: { items: FridgeItem[]; 
           </View>
         </>
       )}
+      </Body>
     </View>
   )
+}
+
+function Body({ scroll, children }: { scroll: boolean; children: ReactNode }) {
+  return scroll ? <ScrollView className="flex-1" showsVerticalScrollIndicator>{children}</ScrollView> : <>{children}</>
 }
 
 function GlassShelf({ frozen, pad }: { frozen: boolean; pad: number }) {
   return (
     <View style={{ marginHorizontal: -pad + 4, marginTop: 6 }}>
       <View className="h-[3px] rounded-t-sm bg-white" />
-      <View className="h-2" style={{ backgroundColor: frozen ? FROST.glass : '#cfe2db', opacity: 0.85 }} />
-      <View className="h-2.5 rounded-b-xl" style={{ backgroundColor: frozen ? FROST.line : '#e6efeb' }} />
+      <View className="h-2" style={{ backgroundColor: frozen ? ICE.glass : '#cfe2db', opacity: 0.85 }} />
+      <View className="h-2.5 rounded-b-xl" style={{ backgroundColor: frozen ? ICE.line : '#e6efeb' }} />
     </View>
   )
 }
@@ -131,7 +141,7 @@ function FrostEdge() {
   return (
     <View className="mt-1.5 flex-row justify-between overflow-hidden px-3" style={{ opacity: 0.55 }}>
       {Array.from({ length: 24 }, (_, i) => (
-        <MaterialCommunityIcons key={i} name={i % 3 === 0 ? 'snowflake-variant' : 'circle-small'} size={i % 3 === 0 ? 10 : 8} color={FROST.glass} />
+        <MaterialCommunityIcons key={i} name={i % 3 === 0 ? 'snowflake-variant' : 'circle-small'} size={i % 3 === 0 ? 10 : 8} color={ICE.glass} />
       ))}
     </View>
   )

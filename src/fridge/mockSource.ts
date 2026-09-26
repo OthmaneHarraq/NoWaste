@@ -43,6 +43,14 @@ const IN_FRIDGE: Seed[] = [
   ['Hummus', 'other', 'Sabra', 2],
   ['Avocados', 'produce', null, 2],
   ['Pizza slices', 'takeout', 'Joe’s Pizza', 1],
+  ['Apples', 'produce', 'Honeycrisp', 1],
+  ['Grapes', 'produce', null, 2],
+  ['Lemons', 'produce', null, 1],
+  ['Cherries', 'produce', null, 3],
+  ['Watermelon slice', 'produce', null, 4],       // 2 days left
+  ['Kiwis', 'produce', 'Zespri', 1],
+  ['Bacon', 'meat', 'Applegate', 2],
+  ['Ketchup', 'condiment', 'Heinz', 5],
 ]
 
 // Freezer: months of shelf life, but the same "2 days before ITS date" rule applies.
@@ -72,6 +80,12 @@ const CAMERA_POOL: [string, FoodCategory, string | null][] = [
   ['Bell peppers', 'produce', null],
   ['Dijon mustard', 'condiment', 'Maille'],
   ['Tofu', 'other', 'Nasoya'],
+  ['Peaches', 'produce', null],
+  ['Pineapple', 'produce', 'Dole'],
+  ['Bananas', 'produce', null],
+  ['Pears', 'produce', null],
+  ['Oranges', 'produce', 'Sunkist'],
+  ['Mango', 'produce', null],
 ]
 
 /** A fresh in-fridge item with its location and estimated expiry filled in. */
@@ -125,6 +139,12 @@ function seedHistory(): FridgeItem[] {
   return out
 }
 
+function hash(s: string) {
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
+  return h
+}
+
 function activityFor(item: FridgeItem, kind: ActivityKind, at: string, via: ActivityEntry['via']): ActivityEntry {
   return {
     id: uid('a'),
@@ -135,10 +155,12 @@ function activityFor(item: FridgeItem, kind: ActivityKind, at: string, via: Acti
     at,
     via,
     quantity: item.quantity,
-    confidence: via === 'camera' ? 0.82 + Math.random() * 0.16 : null,
+    // Stable per item + kind, so reloads show the same numbers.
+    confidence: via === 'camera' ? 0.82 + (hash(item.name + kind) % 17) / 100 : null,
     rawLabel: null,
     undone: false,
-    eventId: `${item.id}|${kind}`,
+    // Automatic resolutions (grace period ran out, date passed) aren't user actions: no Undo.
+    eventId: via === 'system' ? null : `${item.id}|${kind}`,
   }
 }
 
@@ -206,8 +228,12 @@ export function createMockSource(): FridgeSource {
     } else {
       const [name, category, source] = CAMERA_POOL[Math.floor(Math.random() * CAMERA_POOL.length)]
       const item = makeItem(name, category, source, new Date().toISOString())
-      items.push(item)
-      log(item, 'added', 'camera')
+      // Same thing, same spot, same date → one item ×2, like record_event merges rows.
+      const same = items.find(i =>
+        i.status === 'in_fridge' && i.name === name && i.location === item.location && i.expires_at === item.expires_at)
+      if (same) same.quantity += 1
+      else items.push(item)
+      log({ ...(same ?? item), quantity: 1 }, 'added', 'camera')
     }
   }
 
