@@ -2,7 +2,7 @@ import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from '@s
 import { supabase } from '@/lib/supabase'
 import type { FridgeEvent } from '@/types/db'
 
-export type Detection = { item: string; action: 'in' | 'out'; quantity?: number; confidence?: number }
+export type Detection = { item: string; action: 'in' | 'out' | 'unknown'; quantity?: number; confidence?: number }
 
 export type DetectResult =
   | { kind: 'ok'; events: FridgeEvent[]; detections: Detection[] }

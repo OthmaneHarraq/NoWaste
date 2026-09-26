@@ -74,7 +74,7 @@ export default function CameraScreen() {
     busy.current = true
     try {
       const result = await detectItems(household.id, frames)
-      if (result.kind === 'ok') updateEntry(entry.id, { status: 'ok', events: result.events })
+      if (result.kind === 'ok') updateEntry(entry.id, { status: 'ok', events: result.events, detections: result.detections })
       else if (result.kind === 'error') updateEntry(entry.id, { status: 'error', message: result.message })
       else updateEntry(entry.id, { status: 'not-deployed' })
     } finally {

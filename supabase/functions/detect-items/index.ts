@@ -16,7 +16,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { askVision } from '../_shared/vision.ts'
 
-const MIN_CONFIDENCE = 0.35 // below this, don't log anything
+const MIN_CONFIDENCE = 0.4 // below this, show the guess in the app but don't log it
 const MAX_FRAMES = 4
 
 const cors = {
@@ -24,15 +24,33 @@ const cors = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const PROMPT = `These frames are in time order, from a camera beside a fridge door.
-Identify food items being put INTO or taken OUT of the fridge.
-A full hand moving toward the fridge then an empty hand leaving = "in"; the reverse = "out".
-Use short, common, lowercase names ("milk", "eggs", "strawberries"). For opaque containers say "plastic container".
-Reply with ONLY JSON, no prose:
-[{"item": "milk", "action": "in", "quantity": 1, "confidence": 0.9}]
-If nothing is clearly being moved, reply [].`
+const PROMPT = `You are the food-tracking camera for a household fridge. These 4 frames come from one
+camera, in time order, around a single movement:
+  frame 1 = just BEFORE the movement
+  frames 2 and 3 = DURING the movement (a hand is usually holding something)
+  frame 4 = just AFTER the movement
 
-type Detection = { item: string; action: 'in' | 'out'; quantity?: number; confidence?: number }
+Task: name each food or drink item that a hand carries during the movement, and decide its direction:
+  "in"      = the item arrives with the hand and is put down / left behind, or is carried off toward
+              the fridge side and is gone in frame 4 (it went into the fridge)
+  "out"     = the item was sitting there in frame 1, or is taken from the fridge side, and leaves with the hand
+  "unknown" = you can see the item but can't tell the direction
+The fridge itself may not be visible (e.g. during testing at a desk). Use the before/after frames to decide.
+
+Rules:
+- Only food and drink (including packaged food, drinks, leftovers in containers). Ignore people, hands,
+  phones, furniture and food that just sits in the background without being moved.
+- Use short, common, lowercase names: "milk", "apple", "burger", "strawberries". Brand names are fine
+  if clearly readable ("coke"). For an opaque container, say "plastic container".
+- Always report what you see, even when unsure, and give an honest confidence from 0 to 1.
+  A picture of food on a screen or paper counts as that food.
+- quantity = how many of that item were carried (usually 1).
+
+Reply with ONLY a JSON array, no prose, for example:
+[{"item": "apple", "action": "in", "quantity": 1, "confidence": 0.85}]
+If no food or drink appears in any frame, reply [].`
+
+type Detection = { item: string; action: 'in' | 'out' | 'unknown'; quantity?: number; confidence?: number }
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
@@ -82,6 +100,7 @@ Deno.serve(async req => {
     events.push(data)
   }
 
-  // Frames are never stored.
+  // Frames are never stored. `detections` includes everything the AI saw (even what wasn't
+  // logged: unknown direction or low confidence) so the app can show "AI saw: …".
   return json({ events, detections })
 })

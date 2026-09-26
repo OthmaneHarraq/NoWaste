@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { undoEvent } from '@/data/fridge'
 import { colors } from '@/ui/theme'
 import type { FridgeEvent } from '@/types/db'
-import type { DetectResult } from './detect'
+import type { DetectResult, Detection } from './detect'
 
 export type DetectionEntry = {
   id: number
@@ -13,6 +13,8 @@ export type DetectionEntry = {
   frames: string[]
   status: 'sending' | 'captured' | 'skipped' | 'barcode' | DetectResult['kind']
   events?: FridgeEvent[]
+  /** Everything the AI reported, including guesses that weren't logged. */
+  detections?: Detection[]
   message?: string
 }
 
@@ -61,13 +63,20 @@ export function DetectionPanel({ sendToAI, onSendToAIChange, entries }: Props) {
 function EntryRow({ entry }: { entry: DetectionEntry }) {
   const time = new Date(entry.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })
 
-  if (entry.status === 'ok' && entry.events?.length) {
-    return (
-      <View style={styles.entry}>
-        <Text style={styles.time}>{time}</Text>
-        {entry.events.map(ev => <EventLine key={ev.id} ev={ev} />)}
-      </View>
-    )
+  if (entry.status === 'ok') {
+    const events = entry.events ?? []
+    // What the AI saw but didn't log (direction unclear, or not confident enough)
+    const logged = new Set(events.map(ev => `${ev.raw_label ?? ev.item_name}|${ev.action}`.toLowerCase()))
+    const guesses = (entry.detections ?? []).filter(d => d?.item && !logged.has(`${d.item}|${d.action}`.toLowerCase()))
+    if (events.length || guesses.length) {
+      return (
+        <View style={styles.entry}>
+          <Text style={styles.time}>{time}</Text>
+          {events.map(ev => <EventLine key={ev.id} ev={ev} />)}
+          {guesses.map((d, i) => <GuessLine key={i} d={d} />)}
+        </View>
+      )
+    }
   }
 
   const info: Record<Exclude<DetectionEntry['status'], 'ok'> | 'nothing', { icon: keyof typeof Ionicons.glyphMap; text: string; color: string }> = {
@@ -85,6 +94,21 @@ function EntryRow({ entry }: { entry: DetectionEntry }) {
       {entry.status === 'sending' ? <ActivityIndicator size="small" color={colors.primary} /> : <Ionicons name={i.icon} size={18} color={i.color} />}
       <Text style={[styles.entryText, { color: i.color }]}>{i.text}</Text>
       <Text style={styles.time}>{time}</Text>
+    </View>
+  )
+}
+
+/** Something the AI saw but didn't log, so you can tell whether it recognised the food. */
+function GuessLine({ d }: { d: Detection }) {
+  const why = d.action === 'unknown' ? 'direction unclear' : `${d.action === 'in' ? 'going in' : 'coming out'}, not sure enough to log`
+  const sure = d.confidence != null ? ` · ${Math.round(d.confidence * 100)}% sure` : ''
+  return (
+    <View style={styles.eventLine}>
+      <Ionicons name="help-circle-outline" size={24} color={colors.muted} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.guessText}>AI saw: {d.item}</Text>
+        <Text style={styles.time}>{why}{sure}</Text>
+      </View>
     </View>
   )
 }
@@ -138,6 +162,7 @@ const styles = StyleSheet.create({
   entryText: { flex: 1, fontSize: 13 },
   time: { fontSize: 11, color: colors.muted },
   eventLine: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 },
+  guessText: { fontSize: 14, fontWeight: '600', color: colors.muted },
   eventText: { fontSize: 15, fontWeight: '600', color: colors.text, textTransform: 'capitalize' },
   chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 5 },
   chipText: { fontSize: 13, color: colors.text, fontWeight: '500' },
