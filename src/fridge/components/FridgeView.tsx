@@ -66,7 +66,7 @@ export function FridgeView({ items, filtered }: { items: FridgeItem[]; filtered:
     <View className={`flex-1 overflow-hidden rounded-[28px] border border-line bg-frost ${CSS.backsplash}`} onLayout={e => setWidth(e.nativeEvent.layout.width)}>
       <View className="flex-1" style={{ minHeight: 0 }}>
       <ScrollView className="flex-1" contentContainerStyle={{ paddingTop: 26, paddingBottom: 26, paddingHorizontal: 16 }} onScroll={() => setDetail(null)} scrollEventThrottle={64}>
-        <View style={{ width: '100%', maxWidth: 1080, alignSelf: 'center', paddingRight: 34, paddingLeft: 6 }}>
+        <View style={{ width: '100%', maxWidth: 1080, alignSelf: 'center', paddingHorizontal: 20 }}>
           {/* ===== Appliance body ===== */}
           <View
             className={`rounded-[40px] border border-enamel-edge bg-enamel ${CSS.body}`}
