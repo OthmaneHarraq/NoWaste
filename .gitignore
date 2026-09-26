@@ -42,3 +42,6 @@ yarn-error.*
 
 # Secrets: copy .env.example to .env and fill in. Never commit .env
 .env
+
+# Supabase CLI local state (created by `supabase link`)
+supabase/.temp/

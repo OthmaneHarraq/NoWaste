@@ -19,7 +19,8 @@ const MIN_REGEN_MS = 6 * 3_600_000
 const SYSTEM = `You help a household waste less food. You get 30 days of stats on what they ate in time and what they threw away.
 Write 2 or 3 short, specific, actionable sentences (at most 25 words each) about how they buy or store food.
 Name the specific foods. Suggest concrete changes (buy frozen, buy smaller, freeze on the day, shop twice a week).
-Only use the numbers given. No greetings, no praise padding, no emojis.`
+Talk to them as "you", like a friend who notices patterns: "You've thrown out raspberries twice this month. Frozen ones keep for months."
+Say counts in words ("twice", "3 times"), never "units" or "items". Only use the numbers given. No greetings, no praise padding, no emojis.`
 
 const SCHEMA = {
   type: 'object',
