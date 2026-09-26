@@ -6,6 +6,12 @@ import type { FridgeItem, FridgeSnapshot, FridgeSource } from './types'
 
 const HISTORY_DAYS = 30
 
+// Until supabase/migrations/20260926120000_add_location_and_disposition.sql is applied, the
+// new functions/params don't exist. Say so plainly instead of showing a PostgREST error.
+const NEEDS_MIGRATION = 'This needs the latest database update. Ask whoever manages Supabase to apply the new migrations.'
+const missingFunction = (error: string | null) => !!error && /could not find the function/i.test(error)
+const explain = (error: string | null) => (missingFunction(error) ? NEEDS_MIGRATION : error)
+
 /** Live Supabase data for one household, kept fresh by Realtime. */
 export function createLiveSource(householdId: string): FridgeSource {
   let inventory: InventoryRow[] = []
@@ -44,15 +50,20 @@ export function createLiveSource(householdId: string): FridgeSource {
     emit()
     const { error } = await updateDisposition(eventId, value)
     if (error) load().catch(() => {})
-    return error
+    return explain(error)
   }
 
   /** Remove one of an in-fridge item, recording whether it was eaten or binned. */
   async function takeOut(item: FridgeItem, value: Disposition) {
     const location = inventory.find(r => r.id === item.id)?.location ?? undefined
-    const { data, error } = await recordEvent({ householdId, label: item.name, action: 'out', source: 'manual', location, disposition: value })
+    let { data, error } = await recordEvent({ householdId, label: item.name, action: 'out', source: 'manual', location, disposition: value })
+    // Older database: a plain manual "out" already counts as eaten, so "Mark as used" still works.
+    // Binned/composted would be recorded as eaten, so those wait for the migration instead.
+    if (missingFunction(error) && value === 'consumed') {
+      ;({ data, error } = await recordEvent({ householdId, label: item.name, action: 'out', source: 'manual' }))
+    }
     if (data && value === 'thrown_away') binnedBy.set(item.id, data.id)
-    return error
+    return explain(error)
   }
 
   return {
@@ -116,7 +127,7 @@ export function createLiveSource(householdId: string): FridgeSource {
       if (item.status !== 'in_fridge') return 'Only items in the fridge can be moved'
       // null = back to its usual fridge spot for its category.
       const { data, error } = await setLocation(item.id, where === 'freezer' ? 'freezer' : null)
-      if (error) return error
+      if (error) return explain(error)
       if (data) {
         inventory = inventory.map(r => (r.id === data.id ? { ...r, ...data } : r))
         emit()
