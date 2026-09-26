@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import { useHousehold } from '@/household'
 import { recordEvent } from '@/data/fridge'
 import { colors } from '@/ui/theme'
+import CameraFeed from '@/camera/CameraFeed'
 
 // OWNER: camera team.
 //
@@ -36,9 +37,8 @@ export default function CameraScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
-      <View style={styles.preview}>
-        <Text style={styles.previewText}>Camera preview goes here</Text>
-      </View>
+      <CameraFeed />
+      <View style={{ height: 20 }} />
 
       <Text style={styles.heading}>Simulate a detection</Text>
       <Text style={styles.sub}>Pretends the AI saw something, so you can test the Fridge and Activity tabs.</Text>
@@ -56,8 +56,6 @@ export default function CameraScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  preview: { aspectRatio: 3 / 4, backgroundColor: '#1c2a24', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  previewText: { color: '#8fa89c' },
   heading: { fontSize: 17, fontWeight: '700', color: colors.text },
   sub: { fontSize: 13, color: colors.muted, marginTop: 4, marginBottom: 12 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
