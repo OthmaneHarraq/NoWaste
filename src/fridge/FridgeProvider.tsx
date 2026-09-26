@@ -4,7 +4,7 @@ import { displayName } from './categories'
 import { USE_MOCK_DATA } from './config'
 import { estimateExpiry } from './expiration'
 import { expiryLabel, freshnessOf, isCurrent, needsAction, type Freshness } from './freshness'
-import { notifyBrowser } from './browserNotifications'
+import { notify } from './notifications'
 import { createLiveSource } from './liveSource'
 import { createMockSource } from './mockSource'
 import type { ActivityEntry, ConnectionState, FridgeItem, FridgeSnapshot, FridgeSource } from './types'
@@ -114,7 +114,8 @@ export function useFridge(): FridgeContextValue {
 }
 
 /**
- * Toasts (and browser notifications for expired food) when an item crosses a threshold.
+ * Toasts, plus OS notifications (browser on web, local expo-notifications on phones) when
+ * an item crosses a threshold.
  * Runs on first load — so things that were already going off before the page opened
  * still get flagged — then on every realtime change and every minute.
  */
@@ -133,10 +134,12 @@ function useExpiryAlerts(items: FridgeItem[], now: Date, ready: boolean) {
       if (expired.length) {
         const names = expired.map(i => displayName(i.name)).join(', ')
         toast({ tone: 'expired', title: `${expired.length} item${expired.length > 1 ? 's' : ''} past date`, body: `${names}. Time to check and clear ${expired.length > 1 ? 'them' : 'it'} out.` })
-        notifyBrowser('NoWaste: throw these out', names, 'nowaste-expired-summary')
+        notify('NoWaste: throw these out', names, 'nowaste-expired-summary')
       }
       if (soon.length) {
-        toast({ tone: 'soon', title: `${soon.length} item${soon.length > 1 ? 's' : ''} expiring soon`, body: soon.map(i => `${displayName(i.name)} (${expiryLabel(i, now).toLowerCase()})`).join(', ') })
+        const body = soon.map(i => `${displayName(i.name)} (${expiryLabel(i, now).toLowerCase()})`).join(', ')
+        toast({ tone: 'soon', title: `${soon.length} item${soon.length > 1 ? 's' : ''} expiring soon`, body })
+        notify(`NoWaste: use ${soon.length > 1 ? 'these' : 'this'} soon`, body, 'nowaste-soon-summary')
       }
     } else {
       for (const item of inFridge) {
@@ -147,9 +150,10 @@ function useExpiryAlerts(items: FridgeItem[], now: Date, ready: boolean) {
         const name = displayName(item.name)
         if (is === 'expired') {
           toast({ tone: 'expired', title: `${name} has expired`, body: 'Give it a sniff test, or throw it out.' })
-          notifyBrowser(`${name} has expired`, 'Time to throw it out.', `nowaste-${item.id}`)
+          notify(`${name} has expired`, 'Time to throw it out.', `nowaste-${item.id}`)
         } else {
           toast({ tone: 'soon', title: `${name} is expiring soon`, body: `${expiryLabel(item, now)}. Use it first!` })
+          notify(`${name} is expiring soon`, `${expiryLabel(item, now)}. Use it first!`, `nowaste-soon-${item.id}`)
         }
       }
     }

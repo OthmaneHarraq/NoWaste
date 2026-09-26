@@ -1,13 +1,14 @@
 import { Platform } from 'react-native'
 
-// Native OS notifications in the browser (web only, nice-to-have). The phone app would
-// need expo-notifications for the same thing; in-app toasts cover it meanwhile.
+// OS notifications for expired food: the browser Notification API on web. Phones use
+// notifications.native.ts (expo-notifications, local only) with the same functions.
+// Both are optional extras on top of the in-app toasts.
 
-type Permission = 'granted' | 'denied' | 'default' | 'unsupported'
+export type Permission = 'granted' | 'denied' | 'default' | 'unsupported'
 
 const api = () => (Platform.OS === 'web' && typeof window !== 'undefined' && 'Notification' in window ? window.Notification : null)
 
-export function notificationPermission(): Permission {
+export async function getNotificationPermission(): Promise<Permission> {
   return api()?.permission ?? 'unsupported'
 }
 
@@ -21,7 +22,7 @@ export async function requestNotificationPermission(): Promise<Permission> {
   }
 }
 
-export function notifyBrowser(title: string, body: string, tag?: string) {
+export function notify(title: string, body: string, tag?: string) {
   const N = api()
   if (!N || N.permission !== 'granted') return
   try {

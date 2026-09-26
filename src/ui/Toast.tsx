@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Animated, Pressable, Text, View, useWindowDimensions } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export type ToastTone = 'fresh' | 'soon' | 'expired' | 'info'
 
@@ -22,6 +23,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
   const nextId = useRef(1)
   const { width } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
 
   const show = useCallback((t: Omit<Toast, 'id'>) => {
     const id = nextId.current++
@@ -36,7 +38,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         pointerEvents="box-none"
         className="absolute gap-2"
         // Wide: bottom-right, clear of content (above the tab bar when it's at the bottom).
-        style={width >= 700 ? { right: 20, bottom: width >= 900 ? 20 : 76, width: 360 } : { top: 64, left: 12, right: 12 }}
+        // Phone: just under the header, below the notch / status bar.
+        style={width >= 700 ? { right: 20, bottom: width >= 900 ? 20 : 76, width: 360 } : { top: insets.top + 60, left: 12, right: 12 }}
       >
         {toasts.map(t => <ToastCard key={t.id} toast={t} onDone={() => dismiss(t.id)} />)}
       </View>
