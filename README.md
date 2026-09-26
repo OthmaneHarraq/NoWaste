@@ -124,7 +124,7 @@ a single column with a bottom tab bar. There is no separate mobile app to keep i
 | Screen | What it shows |
 |---|---|
 | **Fridge** | Items on "shelves" (top shelf, middle shelf, crisper drawer, door) and in the **freezer** compartment below, colour-coded fresh / use within 2 days / expired; filter by category and fridge/freezer, sort by shelf or expiry. ❄ on a card moves it to the freezer (and back). Items the camera saw leave sit as dashed "taken out" cards until they come back or the grace period ends. |
-| **Fridge view** (web) | Toggle **Normal / Fridge** above the fridge. Fridge view draws an open top-freezer fridge; each item is a small shape for its category (bottle, carton, takeout box, cut of meat, produce bundle, jar, container) coloured by freshness with the same rules as the cards. Hover for name and expiry date. The choice is remembered per browser. |
+| **Fridge view** (web) | Toggle **Normal / Fridge** above the fridge. Fridge view draws an open top-freezer fridge; each item is a small illustration of that food in its own colours (~70 shapes matched by name, e.g. banana, kiwi, cheese wedge, drumstick, soy sauce; unknown names fall back to a shape for the category; see `src/fridge/components/FoodShape.tsx`). Freshness is the coloured line under each item, the same green / amber / red as the cards. Hover for name and expiry date. The choice is remembered per browser. |
 | **Action needed** (on Fridge) | Only things expiring within 2 days or already expired, with **Mark as used** / **Thrown away**. |
 | **Camera feed** (on Fridge) | Latest detections from the same realtime stream. |
 | **Activity** | Timeline grouped by day, with Undo / Fix. |

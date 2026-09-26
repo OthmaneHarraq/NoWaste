@@ -19,6 +19,11 @@ const title = (id: FridgeLocation) => LOCATIONS.find(l => l.id === id)!.title
 const byExpiry = (a: FridgeItem, b: FridgeItem) =>
   (daysUntil(a.expires_at) ?? 9999) - (daysUntil(b.expires_at) ?? 9999) || a.name.localeCompare(b.name)
 
+// Web-only: square kitchen tiles behind the fridge.
+const BACKSPLASH = Platform.OS === 'web'
+  ? 'bg-[linear-gradient(#e6ece9_1px,transparent_1px),linear-gradient(90deg,#e6ece9_1px,transparent_1px)] bg-[length:48px_48px]'
+  : ''
+
 type Hover = { item: FridgeItem; rect: { left: number; top: number; bottom: number; width: number } } | null
 
 /** Stable small number per item, for natural-looking tilt and spacing. */
@@ -39,9 +44,11 @@ export function FridgeView({ items, filtered }: { items: FridgeItem[]; filtered:
   const shape = (item: FridgeItem) => <Item key={item.id} item={item} scale={scale} onHover={setHover} />
 
   return (
-    <View className="flex-1" onLayout={e => setWidth(e.nativeEvent.layout.width)}>
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingVertical: 8, paddingBottom: 24 }} onScroll={() => setHover(null)} scrollEventThrottle={64}>
-        <View style={{ width: '100%', maxWidth: 1120, alignSelf: 'center', paddingRight: 16, paddingLeft: 4 }}>
+    <View className={`flex-1 overflow-hidden rounded-[28px] border border-line bg-[#f4f7f5] ${BACKSPLASH}`} onLayout={e => setWidth(e.nativeEvent.layout.width)}>
+      {/* Kitchen floor under the fridge */}
+      <View pointerEvents="none" className="absolute bottom-0 left-0 right-0 h-16 border-t border-[#e2e9e5] bg-[#eef2ef]" />
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingTop: 22, paddingBottom: 20, paddingHorizontal: 12 }} onScroll={() => setHover(null)} scrollEventThrottle={64}>
+        <View style={{ width: '100%', maxWidth: 1120, alignSelf: 'center', paddingRight: 30, paddingLeft: 4 }}>
           {/* Cabinet */}
           <View
             className="rounded-[34px] border border-enamel-edge bg-enamel p-3"
@@ -225,8 +232,17 @@ function Freezer({ items, filtered, children }: { items: FridgeItem[]; filtered:
 
 function Handle({ top, height }: { top: number; height: number }) {
   return (
-    <View className="absolute w-2.5 rounded-full bg-[#d3dcd8]" style={{ right: -24, top, height, shadowColor: '#17251f', shadowOpacity: 0.12, shadowRadius: 4, shadowOffset: { width: 1, height: 2 } }}>
-      <View className="ml-0.5 mt-2 w-[3px] flex-1 rounded-full bg-white" style={{ marginBottom: 8, opacity: 0.8 }} />
+    <View pointerEvents="none" className="absolute" style={{ right: -34, top, height, width: 22 }}>
+      {/* Standoffs fixing the bar to the door, so it reads as a handle */}
+      <View className="absolute left-0 h-2 w-3 rounded-sm bg-[#c3cdc8]" style={{ top: 10 }} />
+      <View className="absolute left-0 h-2 w-3 rounded-sm bg-[#c3cdc8]" style={{ bottom: 10 }} />
+      {/* The bar: brushed metal */}
+      <View
+        className="absolute bottom-0 top-0 w-3 rounded-full border border-[#bfcac5] bg-[#dfe6e2]"
+        style={{ left: 10, shadowColor: '#17251f', shadowOpacity: 0.18, shadowRadius: 5, shadowOffset: { width: 2, height: 3 } }}
+      >
+        <View className="ml-[2px] mt-2 w-[3px] flex-1 rounded-full bg-white" style={{ marginBottom: 8, opacity: 0.9 }} />
+      </View>
     </View>
   )
 }

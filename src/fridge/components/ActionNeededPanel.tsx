@@ -5,7 +5,8 @@ import { displayName } from '../categories'
 import { expiryLabel, freshnessOf } from '../freshness'
 import { useFridge } from '../FridgeProvider'
 import type { FridgeItem } from '../types'
-import { CategoryIcon, FRESHNESS } from './visuals'
+import { FoodShape, FoodTile } from './FoodShape'
+import { FRESHNESS } from './visuals'
 
 /** The core of the app: what to eat or bin today. Always visible on the dashboard. */
 export function ActionNeededPanel() {
@@ -36,6 +37,14 @@ export function ActionNeededPanel() {
         </View>
       </View>
 
+      {clear && (
+        <View className="flex-row items-end justify-center gap-3 px-4 pb-5 pt-1">
+          <FoodShape name="apple" category="produce" scale={0.9} />
+          <FoodShape name="milk" category="dairy" scale={0.75} />
+          <FoodShape name="broccoli" category="produce" scale={0.9} />
+          <FoodShape name="cheese" category="dairy" scale={0.8} />
+        </View>
+      )}
       {actionNeeded.map((item, i) => <ActionRow key={item.id} item={item} index={i} last={i === actionNeeded.length - 1} />)}
     </View>
   )
@@ -50,7 +59,7 @@ function ActionRow({ item, index, last }: { item: FridgeItem; index: number; las
   return (
     <FadeIn delay={index * 40} from={6}>
       <View className={`flex-row flex-wrap items-center gap-3 px-4 py-3 ${last ? '' : 'border-b border-line'}`}>
-        <CategoryIcon category={item.category} size={36} />
+        <FoodTile name={item.name} category={item.category} size={40} />
         <View className="min-w-[110px] flex-1">
           <Text numberOfLines={1} className="text-[15px] font-semibold text-ink">{displayName(item.name)}</Text>
           <Text className={`text-[13px] font-semibold ${f.text}`}>

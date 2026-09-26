@@ -6,7 +6,7 @@ import { displayName } from '../categories'
 import { timeAgo } from '../freshness'
 import { useFridge } from '../FridgeProvider'
 import type { ActivityEntry } from '../types'
-import { CategoryIcon } from './visuals'
+import { FoodTile } from './FoodShape'
 
 const VERB: Partial<Record<ActivityEntry['kind'], { text: string; icon: 'arrow-down' | 'arrow-up' | 'undo'; color: string }>> = {
   added:    { text: 'Just added', icon: 'arrow-down', color: '#23804a' },
@@ -66,7 +66,7 @@ export function LiveFeed() {
           return (
             <FadeIn key={a.id} from={-6}>
               <View className="flex-row items-center gap-3 rounded-xl px-2 py-2">
-                <CategoryIcon category={a.category} size={30} />
+                <FoodTile name={a.itemName} category={a.category} size={34} />
                 <View className="flex-1">
                   <Text numberOfLines={1} className="text-sm text-ink">
                     <Text className="font-semibold" style={{ color: v.color }}>{v.text}: </Text>

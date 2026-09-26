@@ -6,7 +6,8 @@ import { PENDING_GRACE_MINUTES } from '../config'
 import { expiryLabel, freshnessOf } from '../freshness'
 import { useFridge } from '../FridgeProvider'
 import type { FridgeItem } from '../types'
-import { CategoryIcon, FRESHNESS, FreshnessChip } from './visuals'
+import { FoodTile } from './FoodShape'
+import { FRESHNESS, FreshnessChip } from './visuals'
 
 export const CARD_MIN_WIDTH = 164
 export const CARD_MIN_WIDTH_PHONE = 146
@@ -35,7 +36,7 @@ export function ItemCard({ item, index = 0, width = CARD_MIN_WIDTH }: { item: Fr
           <View className="flex-1 gap-2 p-3">
             <View className="flex-row items-start justify-between">
               <View>
-                <CategoryIcon category={item.category} size={38} />
+                <FoodTile name={item.name} category={item.category} size={42} />
                 {frozen && (
                   <View className="absolute -bottom-1 -right-1 h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-white bg-ice-500">
                     <MaterialCommunityIcons name="snowflake" size={10} color="#fff" />

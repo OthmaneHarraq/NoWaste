@@ -1,4 +1,4 @@
-import { ActivityIndicator, Text, View, useWindowDimensions, type ColorValue } from 'react-native'
+import { ActivityIndicator, Platform, Text, View, useWindowDimensions, type ColorValue } from 'react-native'
 import { Tabs } from 'expo-router/js-tabs'
 import { Ionicons } from '@expo/vector-icons'
 import { AuthScreen, ProfileMenu, useAuth } from '@/auth'
@@ -65,7 +65,10 @@ export default function TabsLayout() {
             tabBarPosition: wide ? 'left' : 'bottom',
             tabBarVariant: wide ? 'material' : 'uikit',
             tabBarLabelPosition: wide ? 'beside-icon' : 'below-icon',
-            tabBarStyle: wide ? { minWidth: 200, paddingTop: 12, backgroundColor: colors.surface, borderRightColor: colors.border } : undefined,
+            // Web has no safe-area inset under the bar, so give icon + label explicit room.
+            tabBarStyle: wide ? undefined : Platform.OS === 'web' ? { height: 72, paddingTop: 6, paddingBottom: 10 } : undefined,
+            // ...and a real line height, or descenders (the y in Activity) get clipped.
+            tabBarLabelStyle: Platform.OS === 'web' ? { fontSize: 11, lineHeight: 15 } : undefined,
             tabBarActiveTintColor: colors.primary,
             tabBarActiveBackgroundColor: wide ? colors.primaryLight : undefined,
             tabBarInactiveTintColor: colors.muted,

@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 import Svg, { Circle, Ellipse, G, Line, Path, Rect } from 'react-native-svg'
+import { View } from 'react-native'
+import { CATEGORIES } from '../categories'
 import type { FoodCategory } from '../types'
 
 // Flat, recognisable food illustrations for the Fridge view, drawn in the food's own
@@ -837,17 +839,135 @@ Object.assign(SHAPES, {
   jam: jar('#8e244d', '#d62828'),
   pesto: jar('#6a8f2f', '#2e7d32'),
   salsa: jar('#c0392b', '#f5902a'),
+  pickles: jar('#7a9a3a', '#43a047'),
+  olives: jar('#55642e', '#2b2b2b'),
+  applesauce: jar('#f3d9a0', '#e0473b'),
+  eggplant: {
+    w: 44, h: 30,
+    art: (
+      <>
+        <Path d="M10 8c8-6 22-4 30 4 5 6 3 14-4 16-8 2-16-2-22-8-4-4-7-9-4-12z" fill="#5e3b7a" />
+        <Path d="M4 6l7-1 3 5-6 3z" fill="#43a047" />
+        <Path d="M2 5l4 1" stroke="#43a047" strokeWidth={2.5} strokeLinecap="round" />
+        {hi(24, 12, 7, 2.5)}
+      </>
+    ),
+  },
+  corn: {
+    w: 40, h: 40,
+    art: (
+      <>
+        <Path d="M8 34c6-10 16-22 26-28 3 5-4 20-14 27-5 3-9 3-12 1z" fill="#f6c946" />
+        <G fill="#e0a918">{[[16, 26], [20, 21], [24, 16], [28, 11], [19, 28], [23, 23], [27, 18]].map(([x, y], i) => <Circle key={i} cx={x} cy={y} r={1.6} />)}</G>
+        <Path d="M4 38c2-10 8-18 12-20-1 8-5 16-12 20zM6 38c10-2 16-6 20-12-8 2-14 6-20 12z" fill="#7cb342" />
+      </>
+    ),
+  },
+  potato: {
+    w: 42, h: 30,
+    art: (
+      <>
+        <Path d="M6 16C4 7 16 3 26 4s14 8 12 15-10 10-20 9S7 22 6 16z" fill="#c9985c" />
+        <G fill="#9a6d3a" opacity={0.7}><Circle cx={14} cy={12} r={1.2} /><Circle cx={25} cy={10} r={1.2} /><Circle cx={30} cy={19} r={1.2} /><Circle cx={18} cy={21} r={1.2} /></G>
+        {hi(18, 9, 6, 2)}
+      </>
+    ),
+  },
+  bread: {
+    w: 46, h: 30,
+    art: (
+      <>
+        <Path d="M4 16C3 6 14 3 23 3s20 3 19 13v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" fill="#d49a52" />
+        <Path d="M12 7l4 8M21 5l4 9M30 6l4 8" stroke="#f3cf95" strokeWidth={2} strokeLinecap="round" />
+        <Rect x={4} y={20} width={38} height={8} rx={2} fill="#b87a36" />
+      </>
+    ),
+  },
+  cake: {
+    w: 40, h: 34,
+    art: (
+      <>
+        <Path d="M4 16L30 6l6 4v6z" fill="#fbe3c2" />
+        <Path d="M4 16h32v14H4z" fill="#f3c98b" />
+        <Path d="M4 21h32" stroke="#fbe3c2" strokeWidth={3} />
+        <Path d="M4 16h32" stroke="#fff5e6" strokeWidth={3} />
+        <Circle cx={30} cy={6} r={3} fill="#d62828" />
+      </>
+    ),
+  },
+  soySauce: {
+    w: 22, h: 52,
+    art: (
+      <>
+        <Rect x={7} y={0} width={8} height={8} rx={2} fill="#d62828" />
+        <Path d="M8 8h6v6c4 2 6 5 6 10v24a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V24c0-5 2-8 6-10z" fill="#3b2418" />
+        <Rect x={2} y={28} width={18} height={10} fill="#f7efe0" />
+      </>
+    ),
+  },
+  dressing: {
+    w: 22, h: 54,
+    art: (
+      <>
+        <Rect x={7} y={0} width={8} height={7} rx={2} fill="#43a047" />
+        <Path d="M8 7h6v5c4 2 6 5 6 10v27a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V22c0-5 2-8 6-10z" fill="#f3ead2" stroke="#e0d4b0" />
+        <Rect x={2} y={28} width={18} height={11} fill="#43a047" />
+      </>
+    ),
+  },
 })
 
-// Name → shape. First match wins, so specific phrases come before general words.
+// Name → shape. First match wins, so the dish/container rules run before the
+// ingredient rules: "strawberry jam" is a jar, "chicken soup" is a tub, "cherry
+// tomatoes" are tomatoes, "Frank's hot sauce" is a sauce bottle.
 const MATCH: [RegExp, string][] = [
+  // Drinks and containers that name a fruit
   [/juice|\boj\b|lemonade/, 'juice'],
   [/peanut butter|almond butter|nut butter/, 'peanutButter'],
   [/ice cream|gelato|sorbet|popsicle/, 'iceCream'],
   [/cream cheese|sour cream|cottage/, 'creamCheese'],
+  [/yogh?urt|kefir|skyr/, 'yogurt'],
+  [/cream soda|root beer|ginger ale|soda|cola|coke|sprite|seltzer|sparkling|\bbeer\b|lager|\bipa\b|iced coffee|cold brew|\bcan\b/, 'can'],
+  [/kombucha/, 'kombucha'],
+  [/wine|prosecco|champagne/, 'wine'],
+  // Sauces, spreads, jars
+  [/frank'?s|hot sauce|sriracha|ketchup|bbq sauce|barbecue sauce/, 'squeeze'],
+  [/soy sauce|fish sauce|worcestershire|teriyaki|oyster sauce/, 'soySauce'],
+  [/pasta sauce|tomato sauce|marinara|salsa/, 'salsa'],
+  [/apple ?sauce/, 'applesauce'],
+  [/dressing|ranch|vinaigrette/, 'dressing'],
+  [/dijon/, 'dijon'],
+  [/mustard/, 'mustard'],
+  [/mayo|aioli/, 'mayo'],
+  [/\bjam\b|jelly|preserves?\b|marmalade/, 'jam'],
+  [/pesto/, 'pesto'],
+  [/pickle/, 'pickles'],
+  [/olive/, 'olives'],
+  [/hummus|\bdip\b|tzatziki|guacamole/, 'hummus'],
+  // Dishes and baked things
+  [/cake|cheesecake|\bpie\b|brownie|cupcake|muffin/, 'cake'],
+  [/bread|bagel|tortilla|\bbuns?\b|toast|pita|naan|croissant/, 'bread'],
   [/dumpling|gyoza|pierogi|\bbao\b|wonton/, 'dumplings'],
+  [/pizza/, 'pizza'],
+  [/sushi|maki|nigiri|sashimi/, 'sushi'],
+  [/bowl|poke/, 'bowl'],
+  [/burrito|\bwraps?\b|taco|quesadilla/, 'burrito'],
+  [/ramen|\bpho\b|noodle|pasta|spaghetti|pad thai|pad see ew|lo mein|udon|lasagn|mac(aroni)? (and|&|n) cheese/, 'noodles'],
+  [/soup|stew|curry|chili(?! pepper)|leftover|stir.?fry|fried rice/, 'tub'],
+  [/salad/, 'salad'],
+  [/nugget|tender|fries|wings? takeout/, 'pail'],
+  [/burger|ground|mince|patt(y|ies)|meatball/, 'groundMeat'],
+  [/tofu|tempeh/, 'tofu'],
+  // Dairy
+  [/oat milk|almond milk|soy milk|oatly|plant milk/, 'plantMilk'],
+  [/pepper jack|cheese|cheddar|mozzarella|parmesan|brie|feta|gouda|halloumi|ricotta/, 'cheese'],
+  [/\beggs?\b(?!plant)/, 'eggs'],
+  [/butter(?!milk)/, 'butter'],
+  [/milk|cream/, 'milk'],
+  // Produce: tomatoes before cherries/grapes ("cherry tomatoes")
+  [/tomato/, 'tomato'],
   [/pineapple/, 'pineapple'],
-  [/watermelon|melon|cantaloupe/, 'watermelon'],
+  [/watermelon|melon|cantaloupe|honeydew/, 'watermelon'],
   [/strawberr/, 'strawberry'],
   [/blueberr/, 'blueberries'],
   [/raspberr|blackberr/, 'raspberries'],
@@ -860,55 +980,33 @@ const MATCH: [RegExp, string][] = [
   [/orange|clementine|mandarin|tangerine|grapefruit/, 'orange'],
   [/lemon/, 'lemon'],
   [/\blime/, 'lime'],
-  [/avocado|guac/, 'avocado'],
+  [/avocado/, 'avocado'],
   [/peach|nectarine|apricot|plum/, 'peach'],
-  [/\bpear/, 'pear'],
+  [/\bpears?\b/, 'pear'],
   [/mango|papaya/, 'mango'],
   [/kiwi/, 'kiwi'],
+  [/eggplant|aubergine/, 'eggplant'],
+  [/\bcorn\b|maize/, 'corn'],
+  [/potato|yam\b/, 'potato'],
   [/carrot/, 'carrot'],
   [/broccoli|cauliflower/, 'broccoli'],
-  [/lettuce|spinach|kale|greens|arugula|cilantro|parsley|basil|herb|chard|cabbage|bok choy/, 'leafy'],
-  [/tomato/, 'tomato'],
+  [/lettuce|spinach|kale|greens|arugula|cilantro|parsley|basil|herb|chard|cabbage|bok choy|celery|scallion|green onion/, 'leafy'],
   [/bell pepper|peppers?\b(?!oni)|capsicum|jalape/, 'pepper'],
   [/cucumber|zucchini|courgette/, 'cucumber'],
   [/mushroom/, 'mushroom'],
   [/onion|shallot|garlic|leek/, 'onion'],
   [/\bpeas?\b|edamame|green bean|snap pea/, 'peas'],
-  [/oat milk|almond milk|soy milk|oatly|plant milk/, 'plantMilk'],
-  [/cheese|cheddar|mozzarella|parmesan|brie|feta|gouda|halloumi/, 'cheese'],
-  [/yogh?urt|kefir|skyr/, 'yogurt'],
-  [/\beggs?\b(?!plant)/, 'eggs'],
-  [/butter(?!milk)/, 'butter'],
-  [/milk|cream/, 'milk'],
+  // Meat and fish
   [/chicken|drumstick|wings?\b|thighs?\b|poultry|rotisserie/, 'drumstick'],
   [/bacon/, 'bacon'],
-  [/sausage|hot dog|bratwurst|chorizo|frank/, 'sausage'],
-  [/ground|mince|patt(y|ies)/, 'groundMeat'],
+  [/sausage|hot dog|bratwurst|chorizo|\bfranks?\b/, 'sausage'],
   [/deli|\bham\b|turkey|salami|prosciutto|bologna|pastrami/, 'deli'],
-  [/shrimp|prawn/, 'shrimp'],
+  [/shrimp|prawn|crab|lobster|scallop/, 'shrimp'],
   [/salmon|fillet|filet|cod\b|tilapia|trout|halibut/, 'fillet'],
   [/fish|tuna|mackerel|sardine/, 'fish'],
   [/steak|beef|pork|lamb|chops?\b|ribs?\b|veal/, 'steak'],
-  [/pizza/, 'pizza'],
-  [/sushi|maki|nigiri|sashimi/, 'sushi'],
-  [/bowl|poke/, 'bowl'],
-  [/burrito|wrap\b|taco|quesadilla/, 'burrito'],
-  [/ramen|\bpho\b|noodle|pasta|spaghetti|pad thai|pad see ew|lo mein|udon|lasagn/, 'noodles'],
-  [/salad/, 'salad'],
-  [/chili|soup|stew|curry|leftover|stir.?fry/, 'tub'],
-  [/kombucha/, 'kombucha'],
-  [/wine|prosecco|champagne/, 'wine'],
-  [/beer|lager|\bipa\b|seltzer|soda|cola|coke|sprite|sparkling|\bcan\b/, 'can'],
+  // Plain drinks last (so "coconut water" etc. don't shadow anything above)
   [/water/, 'water'],
-  [/ketchup|sriracha|hot sauce|bbq sauce/, 'squeeze'],
-  [/dijon/, 'dijon'],
-  [/mustard/, 'mustard'],
-  [/mayo|aioli/, 'mayo'],
-  [/jam\b|jelly|preserve|marmalade/, 'jam'],
-  [/pesto/, 'pesto'],
-  [/salsa/, 'salsa'],
-  [/tofu|tempeh/, 'tofu'],
-  [/hummus|\bdip\b|tzatziki/, 'hummus'],
 ]
 
 const FALLBACK: Record<FoodCategory, string> = {
@@ -944,3 +1042,17 @@ export function FoodShape({ name, category, scale = 1 }: { name?: string; catego
 
 /** For the legend / tests: every shape key. */
 export const SHAPE_KEYS = Object.keys(SHAPES)
+
+/** The food's illustration fitted into a rounded square tile tinted by its category. */
+export function FoodTile({ name, category, size = 40, tint }: { name: string; category: FoodCategory; size?: number; tint?: string }) {
+  const s = SHAPES[shapeFor(name, category)] ?? SHAPES.container
+  const scale = (size * 0.74) / Math.max(s.w, s.h)
+  return (
+    <View
+      accessibilityLabel={name}
+      style={{ width: size, height: size, borderRadius: size * 0.3, backgroundColor: tint ?? CATEGORIES[category].tint, alignItems: 'center', justifyContent: 'center' }}
+    >
+      <Svg width={s.w * scale} height={s.h * scale} viewBox={`-1 -1 ${s.w + 2} ${s.h + 2}`}>{s.art}</Svg>
+    </View>
+  )
+}
