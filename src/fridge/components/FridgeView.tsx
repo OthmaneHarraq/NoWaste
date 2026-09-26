@@ -30,7 +30,8 @@ const CSS = {
   body: WEB ? 'bg-[linear-gradient(160deg,#ffffff_0%,#f1f5f3_38%,#dde5e1_100%)] dark:bg-[linear-gradient(160deg,#34403b_0%,#27302c_40%,#1c2320_100%)]' : '',
   brushed: WEB ? 'bg-[repeating-linear-gradient(90deg,rgba(255,255,255,0.22)_0px,rgba(255,255,255,0.22)_1px,transparent_1px,transparent_5px)]' : '',
   interior: WEB ? 'bg-[linear-gradient(180deg,#f7faf9_0%,#eef4f1_100%)] dark:bg-[linear-gradient(180deg,#1b2320_0%,#161d1a_100%)]' : '',
-  freezer: WEB ? 'bg-[linear-gradient(180deg,#f4f9fd_0%,#e4f0f9_100%)] dark:bg-[linear-gradient(180deg,#182835_0%,#122029_100%)]' : '',
+  // Same family as the interior, just tinted colder (the way dark mode already reads as one appliance).
+  freezer: WEB ? 'bg-[linear-gradient(180deg,#f6fafb_0%,#e9f1f4_100%)] dark:bg-[linear-gradient(180deg,#182835_0%,#122029_100%)]' : '',
   mist: WEB ? 'bg-[linear-gradient(180deg,rgba(255,255,255,0.85)_0%,rgba(255,255,255,0)_100%)] dark:bg-[linear-gradient(180deg,rgba(170,205,235,0.18)_0%,rgba(170,205,235,0)_100%)]' : '',
   frostCorners: WEB ? 'bg-[radial-gradient(circle_at_0%_0%,rgba(255,255,255,0.95)_0px,rgba(255,255,255,0)_70px),radial-gradient(circle_at_100%_0%,rgba(255,255,255,0.9)_0px,rgba(255,255,255,0)_60px),radial-gradient(circle_at_0%_100%,rgba(255,255,255,0.8)_0px,rgba(255,255,255,0)_55px),radial-gradient(circle_at_100%_100%,rgba(255,255,255,0.85)_0px,rgba(255,255,255,0)_65px)] dark:bg-[radial-gradient(circle_at_0%_0%,rgba(168,205,234,0.28)_0px,rgba(168,205,234,0)_70px),radial-gradient(circle_at_100%_0%,rgba(168,205,234,0.24)_0px,rgba(168,205,234,0)_60px),radial-gradient(circle_at_0%_100%,rgba(168,205,234,0.2)_0px,rgba(168,205,234,0)_55px),radial-gradient(circle_at_100%_100%,rgba(168,205,234,0.24)_0px,rgba(168,205,234,0)_65px)]' : '',
   door: WEB ? 'bg-[linear-gradient(150deg,#fbfdfc_0%,#eef3f1_55%,#e3eae6_100%)] dark:bg-[linear-gradient(150deg,#2a3430_0%,#222b27_55%,#1b2320_100%)]' : '',
@@ -61,6 +62,7 @@ export function FridgeView({ items, filtered }: { items: FridgeItem[]; filtered:
 
   return (
     <View className={`flex-1 overflow-hidden rounded-[28px] border border-line bg-frost ${CSS.backsplash}`} onLayout={e => setWidth(e.nativeEvent.layout.width)}>
+      <View className="flex-1" style={{ minHeight: 0 }}>
       {/* Kitchen floor */}
       <View pointerEvents="none" className="absolute bottom-0 left-0 right-0 h-20 border-t border-line bg-paper" />
 
@@ -109,9 +111,14 @@ export function FridgeView({ items, filtered }: { items: FridgeItem[]; filtered:
           </View>
           <View pointerEvents="none" className={`mx-auto -mt-1 h-7 rounded-full ${CSS.floorShadow}`} style={{ width: '92%', backgroundColor: WEB ? undefined : '#00000014' }} />
 
-          <Legend />
         </View>
       </ScrollView>
+      </View>
+
+      {/* Legend: a footer inside the frame, always visible */}
+      <View className="border-t border-line bg-surface px-4 py-3">
+        <Legend />
+      </View>
 
       {empty && <WholeFridgeEmpty filtered={filtered} />}
       {detail && <DetailCard detail={detail} screenWidth={screen} />}
@@ -252,8 +259,9 @@ function Door({ items, wide, filtered, render }: { items: FridgeItem[]; wide: bo
 
 function Freezer({ items, filtered, children }: { items: FridgeItem[]; filtered: boolean; children: ReactNode }) {
   const ICE = useIce()
+  const { c, dark } = useTheme()
   return (
-    <View className={`overflow-hidden rounded-[28px] border px-5 pb-5 pt-4 ${CSS.freezer}`} style={{ backgroundColor: ICE.bg, borderColor: ICE.line }}>
+    <View className={`overflow-hidden rounded-[28px] border px-5 pb-5 pt-4 ${CSS.freezer}`} style={{ backgroundColor: dark ? ICE.bg : '#eef4f5', borderColor: dark ? ICE.line : c.border }}>
       {/* Cold: mist rolling off the top, frost gathering in the corners, condensation beads */}
       <View pointerEvents="none" className={`absolute left-0 right-0 top-0 h-16 ${CSS.mist}`} />
       <View pointerEvents="none" className={`absolute inset-0 ${CSS.frostCorners}`} />
@@ -500,7 +508,7 @@ function Legend() {
   const { c } = useTheme()
   const sample = { added_at: new Date(Date.now() - 6 * 86_400_000).toISOString(), expires_at: new Date(Date.now() + 4 * 86_400_000).toISOString() }
   return (
-    <View className="mt-4 flex-row flex-wrap items-center justify-center gap-x-5 gap-y-2 px-2">
+    <View className="flex-row flex-wrap items-center justify-center gap-x-5 gap-y-2">
       <View className="flex-row items-center gap-2">
         <FreshRing item={sample} freshness="fresh" size={22} stroke={3} />
         <Text className="text-xs text-ink-soft">The ring empties as the date nears</Text>
