@@ -1,4 +1,4 @@
-import { ActivityIndicator, View, type ColorValue } from 'react-native'
+import { ActivityIndicator, Platform, View, type ColorValue } from 'react-native'
 import { Tabs } from 'expo-router/js-tabs'
 import { Ionicons } from '@expo/vector-icons'
 import { AuthScreen, ProfileMenu, useAuth } from '@/auth'
@@ -46,6 +46,11 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="index" options={{ title: 'Fridge', tabBarIcon: icon('file-tray-stacked') }} />
       <Tabs.Screen name="activity" options={{ title: 'Activity', tabBarIcon: icon('time') }} />
+      <Tabs.Screen
+        name="scan"
+        // Phone only: on a computer, the Camera tab has its own barcode scanner
+        options={{ title: 'Scan', tabBarIcon: icon('barcode'), href: Platform.OS === 'web' ? null : undefined }}
+      />
       <Tabs.Screen name="camera" options={{ title: 'Camera', tabBarIcon: icon('camera') }} />
       <Tabs.Screen name="settings" options={{ title: 'Settings', tabBarIcon: icon('settings') }} />
     </Tabs>

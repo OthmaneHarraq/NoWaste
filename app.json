@@ -25,7 +25,14 @@
     },
     "scheme": "nowaste",
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow NoWaste to use the camera to scan barcodes and watch the fridge door.",
+          "barcodeScannerEnabled": true
+        }
+      ]
     ]
   }
 }
