@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import Svg, { Circle, Ellipse, G, Line, Path, Rect } from 'react-native-svg'
 import { View } from 'react-native'
+import { useTheme } from '@/ui/ThemeProvider'
 import { CATEGORIES } from '../categories'
 import type { FoodCategory } from '../types'
 
@@ -1050,10 +1051,11 @@ export const SHAPE_KEYS = Object.keys(SHAPES)
 export function FoodTile({ name, category, size = 40, tint }: { name: string; category: FoodCategory; size?: number; tint?: string }) {
   const s = SHAPES[shapeFor(name, category)] ?? SHAPES.container
   const scale = (size * 0.74) / Math.max(s.w, s.h)
+  const { dark } = useTheme()
   return (
     <View
       accessibilityLabel={name}
-      style={{ width: size, height: size, borderRadius: size * 0.3, backgroundColor: tint ?? CATEGORIES[category].tint, alignItems: 'center', justifyContent: 'center' }}
+      style={{ width: size, height: size, borderRadius: size * 0.3, backgroundColor: tint ?? (dark ? CATEGORIES[category].tintDark : CATEGORIES[category].tint), alignItems: 'center', justifyContent: 'center' }}
     >
       <Svg width={s.w * scale} height={s.h * scale} viewBox={`-1 -1 ${s.w + 2} ${s.h + 2}`}>{s.art}</Svg>
     </View>

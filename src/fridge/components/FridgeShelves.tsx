@@ -74,7 +74,7 @@ export function FridgeShelves({ items, sort, filtered, scroll = false }: {
         )}
         <View className="flex-row items-end" style={{ gap, minHeight: row.length ? undefined : 64 }}>
           {row.map((item, i) => <ItemCard key={item.id} item={item} index={r * perRow + i} width={cardWidth} />)}
-          {row.length === 0 && (
+          {row.length === 0 && items.length > 0 && (
             <View className="flex-1 pb-2">
               <EmptySpot
                 art={frozen ? ['ice cream', 'peas'] : EMPTY_ART[section.title] ?? ['apple', 'milk']}

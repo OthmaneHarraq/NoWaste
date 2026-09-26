@@ -89,7 +89,7 @@ function NavItem({ name, focused, badge, onPress }: {
   const [hover, setHover] = useState(false)
   const nav = NAV[name]
   const { c } = useTheme()
-  const badgeStyle = badge?.tone === 'alert' ? 'bg-spoiled-500' : badge?.tone === 'warn' ? 'bg-soon-500' : 'bg-ink-soft'
+  const badgeStyle = badge?.tone === 'alert' ? 'bg-spoiled-500' : badge?.tone === 'warn' ? 'bg-soon-500' : 'bg-line'
 
   return (
     <Pressable
@@ -112,7 +112,7 @@ function NavItem({ name, focused, badge, onPress }: {
       </View>
       {badge && (
         <View className={`min-w-[24px] items-center rounded-full px-2 py-0.5 ${badgeStyle}`}>
-          <Text className="text-[12px] font-bold text-white">{badge.n}</Text>
+          <Text className={`text-[12px] font-bold ${badge.tone === 'quiet' ? 'text-ink' : 'text-white'}`}>{badge.n}</Text>
         </View>
       )}
     </Pressable>

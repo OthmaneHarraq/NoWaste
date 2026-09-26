@@ -58,7 +58,8 @@ export function FridgeView({ items, filtered }: { items: FridgeItem[]; filtered:
   const plate = width >= 1000 ? 62 : width >= 720 ? 56 : 50
 
   const at = (loc: FridgeLocation) => items.filter(i => i.location === loc).sort(byExpiry)
-  const box = (loc: FridgeLocation) => ({ items: at(loc), plate, filtered, onDetail: setDetail })
+  // quiet: the whole fridge is empty, so the big empty card speaks and the shelves stay blank
+  const box = (loc: FridgeLocation) => ({ items: at(loc), plate, filtered, quiet: items.length === 0, onDetail: setDetail })
   const empty = items.length === 0
 
   return (
@@ -308,16 +309,16 @@ function FoldToggle({ size, more, label, onPress }: { size: number; more: number
   )
 }
 
-type Compartment = { items: FridgeItem[]; plate: number; filtered: boolean; onDetail: (d: Detail) => void }
+type Compartment = { items: FridgeItem[]; plate: number; filtered: boolean; quiet?: boolean; onDetail: (d: Detail) => void }
 
-function Shelf({ label, items, plate, filtered, onDetail, art }: Compartment & { label: string; art: string[] }) {
+function Shelf({ label, items, plate, filtered, quiet, onDetail, art }: Compartment & { label: string; art: string[] }) {
   const { c } = useTheme()
   return (
     <View className="px-5 pt-3">
       <Label right={items.length ? <Count n={items.length} /> : undefined}>{label}</Label>
       <View style={{ paddingHorizontal: 4, minHeight: 72, justifyContent: 'flex-end' }}>
         <ItemGrid items={items} plate={plate} maxRows={2} label={label} onDetail={onDetail}
-          empty={<EmptySpot art={art} text={filtered ? 'Nothing here matches' : 'Nothing here yet'} />} />
+          empty={quiet ? null : <EmptySpot art={art} text={filtered ? 'Nothing here matches' : 'Nothing here yet'} />} />
       </View>
       {/* Glass shelf: lit edge, tinted pane, soft shadow */}
       <View style={{ marginHorizontal: -16, marginTop: 10 }}>
@@ -329,7 +330,7 @@ function Shelf({ label, items, plate, filtered, onDetail, art }: Compartment & {
   )
 }
 
-function Drawer({ items, plate, filtered, onDetail }: Compartment) {
+function Drawer({ items, plate, filtered, quiet, onDetail }: Compartment) {
   const { c, dark } = useTheme()
   const label = title('drawer')
   return (
@@ -338,7 +339,7 @@ function Drawer({ items, plate, filtered, onDetail }: Compartment) {
       <View className="overflow-hidden rounded-[22px] border" style={{ backgroundColor: dark ? '#1a2522' : '#e2eee9', borderColor: c.surface }}>
         <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 30, minHeight: 104 }}>
           <ItemGrid items={items} plate={plate} maxRows={2} label={label} onDetail={onDetail}
-            empty={<EmptySpot art={['apple', 'carrot', 'broccoli']} text={filtered ? 'Nothing here matches' : 'Crisper’s empty'} />} />
+            empty={quiet ? null : <EmptySpot art={['apple', 'carrot', 'broccoli']} text={filtered ? 'Nothing here matches' : 'Crisper’s empty'} />} />
         </View>
         {/* Frosted glass front, overlapping the bottom of what's inside */}
         <View pointerEvents="none" className="absolute bottom-0 left-0 right-0 h-9 items-center overflow-hidden border-t" style={{ borderColor: c.surface, backgroundColor: dark ? 'rgba(40,52,47,0.72)' : 'rgba(255,255,255,0.55)' }}>
@@ -351,7 +352,7 @@ function Drawer({ items, plate, filtered, onDetail }: Compartment) {
 }
 
 /** The open door: its own raised panel with a gasket, three clear bins (one per row), and a handle. */
-function Door({ items, plate, filtered, onDetail, wide }: Compartment & { wide: boolean }) {
+function Door({ items, plate, filtered, quiet, onDetail, wide }: Compartment & { wide: boolean }) {
   const { c, dark } = useTheme()
   const label = title('door')
   // One bin per row: a tray behind the items and a clear lip in front of their bottoms.
@@ -373,7 +374,7 @@ function Door({ items, plate, filtered, onDetail, wide }: Compartment & { wide: 
         <View className="px-1"><Label right={items.length ? <Count n={items.length} /> : undefined}>{label}</Label></View>
         <View style={{ paddingHorizontal: 10, paddingTop: 10 }}>
           <ItemGrid items={items} plate={plate} maxRows={3} minRows={3} gap={10} rowGap={30} label={label} onDetail={onDetail} rowDecor={bin}
-            empty={<EmptySpot art={['water', 'juice']} text={filtered ? 'Nothing here matches' : 'Door’s empty'} compact />} />
+            empty={quiet ? null : <EmptySpot art={['water', 'juice']} text={filtered ? 'Nothing here matches' : 'Door’s empty'} compact />} />
         </View>
       </View>
       {/* The door's handle sits on its outer edge */}
@@ -382,7 +383,7 @@ function Door({ items, plate, filtered, onDetail, wide }: Compartment & { wide: 
   )
 }
 
-function Freezer({ items, plate, filtered, onDetail }: Compartment) {
+function Freezer({ items, plate, filtered, quiet, onDetail }: Compartment) {
   const ICE = useIce()
   const { c, dark } = useTheme()
   return (
@@ -409,7 +410,7 @@ function Freezer({ items, plate, filtered, onDetail }: Compartment) {
       </Label>
       <View style={{ paddingHorizontal: 4, minHeight: 72, justifyContent: 'flex-end' }}>
         <ItemGrid items={items} plate={plate} maxRows={2} label={title('freezer')} onDetail={onDetail}
-          empty={<EmptySpot art={['ice cream', 'peas']} text={filtered ? 'Nothing here matches' : 'Freezer’s empty. Tap ❄ on a card to freeze something.'} color={ICE.text} />} />
+          empty={quiet ? null : <EmptySpot art={['ice cream', 'peas']} text={filtered ? 'Nothing here matches' : 'Freezer’s empty. Tap ❄ on a card to freeze something.'} color={ICE.text} />} />
       </View>
       {/* Wire rack */}
       <View style={{ marginHorizontal: -8, marginTop: 10, gap: 3 }}>
@@ -486,9 +487,11 @@ export function WholeFridgeEmpty({ filtered }: { filtered: boolean }) {
 
 function Item({ item, plate, onDetail }: { item: FridgeItem; plate: number; onDetail: (d: Detail) => void }) {
   const { now } = useFridge()
-  const { c } = useTheme()
+  const { c, dark } = useTheme()
+  const hex = useFreshHex()
   const [hovered, setHovered] = useState(false)
   const freshness = freshnessOf(item, now)
+  const urgent = item.status !== 'pending_removal' && (freshness === 'soon' || freshness === 'expired')
   const pending = item.status === 'pending_removal'
   const tilt = jitter(item.id, 5)
 
@@ -520,11 +523,16 @@ function Item({ item, plate, onDetail }: { item: FridgeItem; plate: number; onDe
         ...(WEB ? ({ transition: 'transform 160ms ease', cursor: 'pointer' } as object) : null),
       }}
     >
+      {/* Soft glow behind things that need attention, so they stand out at a glance */}
+      {urgent && (
+        <View pointerEvents="none" className="absolute rounded-full" style={{ left: -5, top: -5, width: plate + 10, height: plate + 10, backgroundColor: hex(freshness), opacity: dark ? 0.22 : 0.18 }} />
+      )}
       <FreshRing item={item} freshness={freshness} size={plate} stroke={plate > 56 ? 3.5 : 3} dashed={pending}>
         {/* The plate the food sits on */}
         <View
-          className="items-center justify-center rounded-full bg-surface"
-          style={{ width: plate - 12, height: plate - 12, shadowColor: '#000000', shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }}
+          className="items-center justify-center rounded-full"
+          // Warm ceramic in light, slate in dark: sits apart from the interior without glaring
+          style={{ width: plate - 12, height: plate - 12, backgroundColor: dark ? '#27302c' : '#f6f2ea', borderWidth: 1, borderColor: dark ? '#34403b' : '#ebe4d6', shadowColor: '#000000', shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }}
         >
           <View style={{ transform: [{ rotate: `${tilt}deg` }] }}>
             <FoodTile name={item.name} category={item.category} size={plate - 14} tint="transparent" />

@@ -4,14 +4,15 @@ import type { FoodCategory, FridgeLocation } from './types'
 type IconName = keyof typeof MaterialCommunityIcons.glyphMap
 
 // Category hues deliberately avoid green / amber / red, which mean freshness everywhere.
-export const CATEGORIES: Record<FoodCategory, { label: string; icon: IconName; color: string; tint: string }> = {
-  meat:      { label: 'Meat & fish', icon: 'food-drumstick',      color: '#8e5b8c', tint: '#f4ecf4' },
-  dairy:     { label: 'Dairy',       icon: 'cheese',              color: '#3f7fb3', tint: '#eaf2f9' },
-  produce:   { label: 'Produce',     icon: 'carrot',              color: '#2b8a93', tint: '#e6f4f5' },
-  takeout:   { label: 'Takeout',     icon: 'food-takeout-box',    color: '#a0694a', tint: '#f6eee9' },
-  beverage:  { label: 'Drinks',      icon: 'bottle-soda-classic', color: '#5967c0', tint: '#eceefa' },
-  condiment: { label: 'Condiments',  icon: 'shaker-outline',      color: '#7a68a8', tint: '#f0edf7' },
-  other:     { label: 'Other',       icon: 'food-variant',        color: '#627581', tint: '#eef1f3' },
+// tint = the tile behind a category's icon/food; tintDark = the same hue as a deep wash for dark mode.
+export const CATEGORIES: Record<FoodCategory, { label: string; icon: IconName; color: string; tint: string; tintDark: string }> = {
+  meat:      { label: 'Meat & fish', icon: 'food-drumstick',      color: '#8e5b8c', tint: '#f4ecf4', tintDark: '#2a2130' },
+  dairy:     { label: 'Dairy',       icon: 'cheese',              color: '#3f7fb3', tint: '#eaf2f9', tintDark: '#1b2733' },
+  produce:   { label: 'Produce',     icon: 'carrot',              color: '#2b8a93', tint: '#e6f4f5', tintDark: '#172a2b' },
+  takeout:   { label: 'Takeout',     icon: 'food-takeout-box',    color: '#a0694a', tint: '#f6eee9', tintDark: '#2b231d' },
+  beverage:  { label: 'Drinks',      icon: 'bottle-soda-classic', color: '#5967c0', tint: '#eceefa', tintDark: '#1f2235' },
+  condiment: { label: 'Condiments',  icon: 'shaker-outline',      color: '#7a68a8', tint: '#f0edf7', tintDark: '#252235' },
+  other:     { label: 'Other',       icon: 'food-variant',        color: '#627581', tint: '#eef1f3', tintDark: '#212829' },
 }
 
 export const CATEGORY_ORDER: FoodCategory[] = ['meat', 'dairy', 'produce', 'takeout', 'beverage', 'condiment', 'other']

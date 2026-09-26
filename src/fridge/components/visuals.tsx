@@ -31,9 +31,10 @@ export function useFreshHex() {
 
 export function CategoryIcon({ category, size = 40 }: { category: FoodCategory; size?: number }) {
   const c = CATEGORIES[category]
+  const { dark } = useTheme()
   return (
     <View
-      style={{ width: size, height: size, borderRadius: size * 0.32, backgroundColor: c.tint }}
+      style={{ width: size, height: size, borderRadius: size * 0.32, backgroundColor: dark ? c.tintDark : c.tint }}
       className="items-center justify-center"
       accessibilityLabel={c.label}
     >

@@ -25,7 +25,9 @@ export function FreshRing({ item, freshness, size, stroke = 3, children, dashed 
   const r = (size - stroke) / 2
   const circumference = 2 * Math.PI * r
   const left = lifeLeft(item)
-  const fraction = freshness === 'expired' ? 1 : left ?? 1
+  // Items expiring soon keep at least a third of the arc, so the most urgent ones never
+  // look like a bare grey ring (the detail card still shows the exact days left).
+  const fraction = freshness === 'expired' ? 1 : freshness === 'soon' ? Math.max(0.35, left ?? 1) : left ?? 1
   const color = hex(freshness)
 
   return (

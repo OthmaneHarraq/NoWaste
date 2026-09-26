@@ -30,7 +30,7 @@ export function ActionNeededPanel() {
           />
         </View>
         <View className="flex-1">
-          <Text className="text-[17px] font-bold text-ink">
+          <Text className="font-display text-[20px] text-ink">
             {clear ? 'All clear' : `Action needed · ${actionNeeded.length}`}
           </Text>
           <Text className="text-[13px] text-ink-soft">
