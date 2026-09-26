@@ -1,20 +1,26 @@
-import { useState } from 'react'
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useMemo, useRef, useState } from 'react'
+import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useHousehold } from '@/household'
 import { recordEvent } from '@/data/fridge'
 import { colors } from '@/ui/theme'
+import CameraFeed from '@/camera/CameraFeed'
+import { useMotionDetector } from '@/camera/useMotionDetector'
+import { MotionPanel, SENSITIVITY_THRESHOLDS, type Sensitivity } from '@/camera/MotionPanel'
+import { DEFAULT_MOTION_SETTINGS, type MotionEvent } from '@/camera/motion'
+import { useFrameRecorder } from '@/camera/useFrameRecorder'
+import { detectItems } from '@/camera/detect'
+import { DetectionPanel, type DetectionEntry } from '@/camera/DetectionPanel'
 
-// OWNER: camera team.
+// OWNER: camera team. The fridge camera (runs in the browser; see src/camera/).
 //
-// The plan (see README → "How detection works"):
-//   1. Camera feed from the mounted phone (expo-camera, or a web page with getUserMedia)
-//   2. Cheap motion detection wakes it up; grab 3–4 frames across the motion
-//   3. Send frames to the `detect-items` Edge Function (supabase/functions/detect-items)
-//   4. The function asks the vision AI what went in/out and calls record_event
-//   5. The Activity tab shows it instantly with Undo / Fix
+//   1. CameraFeed           live webcam (USB or built-in) → <video>
+//   2. useMotionDetector    tiny frames ~7x/sec; notices when something moves
+//   3. useFrameRecorder     keeps frames from before / during / after each movement
+//   4. detectItems          sends 4 of them to the detect-items Edge Function, which asks
+//                           the vision AI and logs the result with record_event
+//   5. DetectionPanel       "Added milk" with Undo / Fix; Fridge + Activity update live
 //
-// Until that exists, the buttons below fake a camera detection so the rest of
-// the team can build and demo against real data.
+// The "Simulate a detection" buttons still fake a detection for testing without a camera.
 
 const SAMPLES: { label: string; action: 'in' | 'out'; confidence: number }[] = [
   { label: 'milk', action: 'in', confidence: 0.94 },
@@ -28,6 +34,52 @@ export default function CameraScreen() {
   const { household } = useHousehold()
   const [log, setLog] = useState<string[]>([])
 
+  // Step 2: motion detection on the live <video>
+  const [video, setVideo] = useState<HTMLVideoElement | null>(null)
+  const [sensitivity, setSensitivity] = useState<Sensitivity>('medium')
+  const [motionEvents, setMotionEvents] = useState<MotionEvent[]>([])
+  const settings = useMemo(
+    () => ({ ...DEFAULT_MOTION_SETTINGS, motionThreshold: SENSITIVITY_THRESHOLDS[sensitivity] }),
+    [sensitivity]
+  )
+
+  // Step 3: capture frames around each movement and ask the AI what it was
+  const recorder = useFrameRecorder(video)
+  const [sendToAI, setSendToAI] = useState(true)
+  const [entries, setEntries] = useState<DetectionEntry[]>([])
+  const busy = useRef(false) // one AI request at a time
+  const nextId = useRef(1)
+
+  const addEntry = (e: DetectionEntry) => setEntries(list => [e, ...list].slice(0, 4))
+  const updateEntry = (id: number, patch: Partial<DetectionEntry>) =>
+    setEntries(list => list.map(e => (e.id === id ? { ...e, ...patch } : e)))
+
+  async function handleMotionEnd(event: MotionEvent) {
+    setMotionEvents(list => [event, ...list].slice(0, 5))
+    const frames = recorder.finishEvent()
+    if (frames.length === 0) return
+
+    const entry: DetectionEntry = { id: nextId.current++, at: Date.now(), frames, status: 'sending' }
+    if (!sendToAI || !household) return addEntry({ ...entry, status: 'captured' })
+    if (busy.current) return addEntry({ ...entry, status: 'skipped' })
+
+    addEntry(entry)
+    busy.current = true
+    try {
+      const result = await detectItems(household.id, frames)
+      if (result.kind === 'ok') updateEntry(entry.id, { status: 'ok', events: result.events })
+      else if (result.kind === 'error') updateEntry(entry.id, { status: 'error', message: result.message })
+      else updateEntry(entry.id, { status: 'not-deployed' })
+    } finally {
+      busy.current = false
+    }
+  }
+
+  const { level, active } = useMotionDetector(video, settings, {
+    onSample: recorder.onSample,
+    onMotionEnd: handleMotionEnd,
+  })
+
   async function simulate(s: (typeof SAMPLES)[number]) {
     if (!household) return
     const { data, error } = await recordEvent({ householdId: household.id, ...s, source: 'camera' })
@@ -36,9 +88,24 @@ export default function CameraScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
-      <View style={styles.preview}>
-        <Text style={styles.previewText}>Camera preview goes here</Text>
+      {/* Green border while something is moving */}
+      <View style={[styles.feedBorder, active && styles.feedBorderActive]}>
+        <CameraFeed onVideoReady={setVideo} />
       </View>
+      {Platform.OS === 'web' && (
+        <MotionPanel
+          level={level}
+          active={active}
+          threshold={settings.motionThreshold}
+          sensitivity={sensitivity}
+          onSensitivityChange={setSensitivity}
+          events={motionEvents}
+        />
+      )}
+      {Platform.OS === 'web' && (
+        <DetectionPanel sendToAI={sendToAI} onSendToAIChange={setSendToAI} entries={entries} />
+      )}
+      <View style={{ height: 20 }} />
 
       <Text style={styles.heading}>Simulate a detection</Text>
       <Text style={styles.sub}>Pretends the AI saw something, so you can test the Fridge and Activity tabs.</Text>
@@ -56,8 +123,8 @@ export default function CameraScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  preview: { aspectRatio: 3 / 4, backgroundColor: '#1c2a24', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  previewText: { color: '#8fa89c' },
+  feedBorder: { borderRadius: 19, borderWidth: 3, borderColor: 'transparent' },
+  feedBorderActive: { borderColor: colors.primary },
   heading: { fontSize: 17, fontWeight: '700', color: colors.text },
   sub: { fontSize: 13, color: colors.muted, marginTop: 4, marginBottom: 12 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
