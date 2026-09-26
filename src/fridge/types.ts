@@ -71,6 +71,8 @@ export interface FridgeSource {
   /** Freezer ↔ fridge. Moving to the freezer re-estimates the date from added_at;
    *  moving out starts the fridge clock from now (it's thawing). */
   moveTo(item: FridgeItem, where: 'freezer' | 'fridge'): Promise<string | null>
+  /** Set the expiry by hand ('YYYY-MM-DD'), or null to go back to the estimate. */
+  setExpiry(item: FridgeItem, date: string | null): Promise<string | null>
   /** A pending_removal item came back. */
   putBack(item: FridgeItem): Promise<string | null>
   addItem(name: string): Promise<string | null>

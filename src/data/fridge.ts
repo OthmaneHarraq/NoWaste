@@ -41,6 +41,18 @@ export async function correctEvent(eventId: string, itemName: string, action?: '
   return { data, error: error?.message ?? null }
 }
 
+/**
+ * Set (or clear, with null) an item's expiry date, 'YYYY-MM-DD'. Bumps updated_at so the
+ * dashboard knows a person chose this date (it then wins over freezer estimates).
+ */
+export async function setExpiry(inventoryId: string, date: string | null): Promise<string | null> {
+  const { error } = await supabase
+    .from('inventory')
+    .update({ expires_on: date, updated_at: new Date().toISOString() })
+    .eq('id', inventoryId)
+  return error?.message ?? null
+}
+
 // ---- Live data hooks -------------------------------------------------------
 
 /** Re-runs `load` whenever `table` changes for this household (Supabase Realtime). */

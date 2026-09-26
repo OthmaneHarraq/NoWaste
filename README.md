@@ -30,10 +30,12 @@ A camera beside the fridge sees what goes in and out, AI identifies it, and ever
 
 1. Create a project at supabase.com.
 2. **SQL Editor** → paste all of `supabase/migrations/20260926000000_nowaste_schema.sql` → Run.
+   Then do the same with every later file in `supabase/migrations/`, in name order (e.g. `20260926193000_smarter_expiry_matching.sql`, which lets "oat milk" or "chicken breast" use the catalog's milk / chicken shelf life).
 3. **Authentication → Sign In / Providers → Email**: for the hackathon you can turn off "Confirm email" so sign-ups work instantly.
 4. **Organization settings → Team**: invite the rest of the group.
 5. Share the Project URL and anon key in the group chat (not in git).
-6. When the AI function is ready: **Edge Functions → Secrets** → add `ANTHROPIC_API_KEY`, then deploy with `npx supabase functions deploy detect-items`.
+6. When the AI functions are ready: **Edge Functions → Secrets** → add `ANTHROPIC_API_KEY`, then deploy both:
+   `npx supabase functions deploy detect-items` (fridge camera) and `npx supabase functions deploy read-expiry` (phone Scan tab → "Read date").
 
 ## Who owns what
 
@@ -158,6 +160,13 @@ rule-of-thumb numbers for the demo, not food-safety advice):
 - Fridge spots come from the category (dairy/other → top shelf, meat/takeout → middle,
   produce → crisper drawer, drinks/condiments → door). The camera can't tell fridge from
   freezer, so the freezer is always the user's choice.
+
+### Setting expiry dates
+
+- **Automatic:** when an item goes in, the catalog's shelf life for that food sets the date (exact name, else a whole-word match: "oat milk" → milk). No catalog match → the category estimate above.
+- **By hand:** tap the date chip (✎) on any item card to pick a new date, or "Use estimate" to go back.
+- **From the package:** on the phone Scan tab, after adding an item tap **Read date** and photograph the printed best-by date (needs `read-expiry` deployed).
+- A date set by hand or read off the package wins over freezer estimates.
 
 ### Run it
 

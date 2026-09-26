@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ActivityIndicator, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '@/ui/theme'
+import type { FridgeEvent } from '@/types/db'
 import type { useBarcodeFlow } from './useBarcodeFlow'
 
 type Flow = ReturnType<typeof useBarcodeFlow>
@@ -10,7 +11,7 @@ type Flow = ReturnType<typeof useBarcodeFlow>
  * The barcode confirm card (looking up / found with countdown / unknown → name it),
  * any error, and recently logged items with Undo. Shared by the laptop camera and the phone Scan tab.
  */
-export function BarcodeCards({ flow }: { flow: Flow }) {
+export function BarcodeCards({ flow, onReadDate }: { flow: Flow; onReadDate?: (ev: FridgeEvent) => void }) {
   const { pending, recent, error, confirm, nameUnknown, undo, cancel } = flow
   return (
     <>
@@ -57,6 +58,11 @@ export function BarcodeCards({ flow }: { flow: Flow }) {
         <View key={ev.id} style={[styles.row, styles.recent]}>
           <Ionicons name={ev.action === 'in' ? 'arrow-down-circle' : 'arrow-up-circle'} size={20} color={ev.action === 'in' ? colors.primary : colors.warning} />
           <Text style={styles.recentText}>{ev.action === 'in' ? 'Added' : 'Took out'} {ev.item_name}</Text>
+          {onReadDate && ev.action === 'in' && (
+            <TouchableOpacity style={[styles.chip, styles.chipAccent]} onPress={() => onReadDate(ev)}>
+              <Text style={[styles.chipText, { color: colors.primary }]}>Read date</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.chip} onPress={() => undo(ev)}><Text style={styles.chipText}>Undo</Text></TouchableOpacity>
         </View>
       ))}
@@ -117,5 +123,6 @@ const styles = StyleSheet.create({
   recent: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border },
   recentText: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text, textTransform: 'capitalize' },
   chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 5 },
+  chipAccent: { borderColor: colors.primary },
   chipText: { fontSize: 13, color: colors.text, fontWeight: '500' },
 })

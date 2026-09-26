@@ -11,8 +11,9 @@
 //
 // Location: the category's fridge spot, unless the user moved the item to the freezer
 // (kept in `moves`, per device, until the schema has a location column). Freezer items
-// always use the freezer estimate from ./expiration.ts; fridge items use expires_on when
-// the catalog knew the food, else the fridge estimate.
+// use the freezer estimate from ./expiration.ts; fridge items use expires_on when
+// the catalog knew the food, else the fridge estimate. A date someone set by hand (or
+// read off the package) after the last freezer move always wins.
 
 import type { FridgeEvent, InventoryItem } from '@/types/db'
 import { categorize, defaultLocation } from './categories'
@@ -60,6 +61,8 @@ export function buildSnapshot(args: {
     const category = categoryOf(row.name, row.foods?.category)
     const move = moves[row.id]
     const frozen = move?.where === 'freezer'
+    // Someone set the date by hand after the last freezer move → trust them over the estimate
+    const datedAfterMove = !!move && !!row.expires_on && new Date(row.updated_at).getTime() > new Date(move.at).getTime()
     return {
       id: row.id,
       name: row.name,
@@ -68,7 +71,9 @@ export function buildSnapshot(args: {
       quantity: row.quantity,
       location: frozen ? 'freezer' : defaultLocation(category),
       added_at: row.added_at,
-      expires_at: frozen
+      expires_at: datedAfterMove
+        ? dateToIso(row.expires_on)
+        : frozen
         ? estimateExpiry(category, 'freezer', row.added_at)
         : move // back out of the freezer: thawing started when it moved
           ? estimateExpiry(category, 'fridge', move.at)

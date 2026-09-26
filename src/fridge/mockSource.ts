@@ -263,6 +263,16 @@ export function createMockSource(): FridgeSource {
       return done()
     },
 
+    setExpiry(item, date) {
+      const i = find(item.id)
+      if (i) {
+        i.expires_at = date
+          ? (() => { const [y, m, d] = date.split('-').map(Number); return new Date(y, m - 1, d, 12).toISOString() })()
+          : estimateExpiry(i.category, i.location === 'freezer' ? 'freezer' : 'fridge', i.added_at)
+      }
+      return done()
+    },
+
     putBack(item) {
       const i = find(item.id)
       if (i) {

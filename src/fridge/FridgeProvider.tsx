@@ -25,6 +25,8 @@ type FridgeContextValue = {
   markThrownAway: (item: FridgeItem) => Promise<void>
   putBack: (item: FridgeItem) => Promise<void>
   moveTo: (item: FridgeItem, where: 'freezer' | 'fridge') => Promise<void>
+  /** 'YYYY-MM-DD', or null to go back to the estimate. */
+  setExpiry: (item: FridgeItem, date: string | null) => Promise<void>
   addItem: (name: string) => Promise<boolean>
   undo: (entry: ActivityEntry) => Promise<void>
   correct: (entry: ActivityEntry, name: string, action: 'in' | 'out') => Promise<void>
@@ -89,6 +91,14 @@ export function FridgeProvider({ householdId, children }: { householdId: string;
       await run(source.moveTo(item, where), where === 'freezer'
         ? { tone: 'info', title: `${displayName(item.name)} is in the freezer`, body: `Good until about ${until} now.` }
         : { tone: 'info', title: `${displayName(item.name)} is thawing in the fridge`, body: `Use it by about ${until}.` })
+    },
+    setExpiry: async (item, date) => {
+      const when = date
+        ? new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+        : null
+      await run(source.setExpiry(item, date), when
+        ? { tone: 'info', title: `${displayName(item.name)}: use by ${when}` }
+        : { tone: 'info', title: `${displayName(item.name)} is back to the estimated date` })
     },
     addItem: name => run(source.addItem(name)),
     undo: async entry => {

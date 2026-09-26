@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { supabase } from '@/lib/supabase'
-import { correctEvent, recordEvent, undoEvent } from '@/data/fridge'
+import { correctEvent, recordEvent, setExpiry, undoEvent } from '@/data/fridge'
 import type { FridgeEvent } from '@/types/db'
 import { buildSnapshot, type InventoryRow, type Moves, type Overrides } from './adapter'
 import type { ConnectionState, FridgeSnapshot, FridgeSource } from './types'
@@ -114,6 +114,17 @@ export function createLiveSource(householdId: string): FridgeSource {
       emit()
       await AsyncStorage.setItem(movesKey, JSON.stringify(moves)).catch(() => {})
       return null
+    },
+
+    async setExpiry(item, date) {
+      if (item.status !== 'in_fridge') return 'Only items in the fridge have a date to change'
+      // Show it straight away; Realtime then confirms with the saved row
+      const now = new Date().toISOString()
+      inventory = inventory.map(r => (r.id === item.id ? { ...r, expires_on: date, updated_at: now } : r))
+      emit()
+      const error = await setExpiry(item.id, date)
+      if (error) load().catch(() => {})
+      return error
     },
 
     async putBack(item) {
