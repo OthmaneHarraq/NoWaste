@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Image, Platform, Pressable, ScrollView, Text, View, useWindowDimensions, type GestureResponderEvent } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { CATEGORIES, LOCATIONS, displayName } from '../categories'
@@ -6,6 +6,7 @@ import { PENDING_GRACE_MINUTES } from '../config'
 import { daysUntil, expiryLabel, freshnessOf, timeAgo } from '../freshness'
 import { useFridge } from '../FridgeProvider'
 import type { FridgeItem, FridgeLocation } from '../types'
+import { FadeIn } from '@/ui/motion'
 import { shadow } from '@/ui/theme'
 import { useTheme } from '@/ui/ThemeProvider'
 import { FoodShape, FoodTile } from './FoodShape'
@@ -57,7 +58,7 @@ export function FridgeView({ items, filtered }: { items: FridgeItem[]; filtered:
   const plate = width >= 1000 ? 62 : width >= 720 ? 56 : 50
 
   const at = (loc: FridgeLocation) => items.filter(i => i.location === loc).sort(byExpiry)
-  const place = (item: FridgeItem) => <Item key={item.id} item={item} plate={plate} onDetail={setDetail} />
+  const box = (loc: FridgeLocation) => ({ items: at(loc), plate, filtered, onDetail: setDetail })
   const empty = items.length === 0
 
   return (
@@ -79,7 +80,7 @@ export function FridgeView({ items, filtered }: { items: FridgeItem[]; filtered:
 
             {/* Freezer compartment */}
             <View>
-              <Freezer items={at('freezer')} filtered={filtered}>{at('freezer').map(place)}</Freezer>
+              <Freezer {...box('freezer')} />
               <Handle top={26} height={70} />
             </View>
 
@@ -95,11 +96,11 @@ export function FridgeView({ items, filtered }: { items: FridgeItem[]; filtered:
                   <View className="items-center pt-2.5">
                     <View className="h-1.5 w-32 rounded-full bg-surface" style={{ shadowColor: '#fff4c2', shadowOpacity: 1, shadowRadius: 20 }} />
                   </View>
-                  <Shelf label={title('top_shelf')} items={at('top_shelf')} filtered={filtered} art={['milk', 'cheese', 'yogurt']}>{at('top_shelf').map(place)}</Shelf>
-                  <Shelf label={title('middle_shelf')} items={at('middle_shelf')} filtered={filtered} art={['pizza', 'drumstick', 'bowl']}>{at('middle_shelf').map(place)}</Shelf>
-                  <Drawer label={title('drawer')} items={at('drawer')} filtered={filtered}>{at('drawer').map(place)}</Drawer>
+                  <Shelf label={title('top_shelf')} art={['milk', 'cheese', 'yogurt']} {...box('top_shelf')} />
+                  <Shelf label={title('middle_shelf')} art={['pizza', 'drumstick', 'bowl']} {...box('middle_shelf')} />
+                  <Drawer {...box('drawer')} />
                 </View>
-                <Door items={at('door')} wide={!stacked} filtered={filtered} render={place} />
+                <Door wide={!stacked} {...box('door')} />
               </View>
             </View>
           </View>
@@ -182,18 +183,144 @@ function Label({ children, color, right }: { children: string; color?: string; r
   )
 }
 
-const ROW = { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', columnGap: 14, rowGap: 14 } as const
+/* ---------- Item grid: layout, overflow and re-flow for every compartment ----------
+ *
+ * Every compartment (shelves, drawer, door, freezer) lays its items out through this one
+ * component, so they all behave the same:
+ *
+ *   1. Items get explicit slots (row, col), filled left→right, top→bottom, most urgent first.
+ *      Positions are absolute, so when an item leaves, the ones after it glide into its
+ *      place (CSS transition on web) instead of leaving a hole — live, as data changes.
+ *   2. Overflow, in this order:
+ *        a. fit at full plate size within the compartment's row budget;
+ *        b. else shrink one step (~80%, never below 44px, the smallest size where the
+ *           food and its ring stay readable);
+ *        c. else the last slot becomes a "+N" plate; tapping it expands just that
+ *           compartment to show everything, with a "Less" slot to fold it back.
+ *      Scrolling inside a compartment was ruled out (nested scroll inside the scrolling
+ *      fridge, hidden items, fights the hover card), and so was wrapping without limit
+ *      (a busy shelf would balloon and the fridge would stop looking like a fridge).
+ *      Because items are sorted by expiry, what gets folded away is always the least urgent.
+ */
 
-function Shelf({ label, items, filtered, art, children }: { label: string; items: FridgeItem[]; filtered: boolean; art: string[]; children: ReactNode }) {
+const MIN_PLATE = 44
+const EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)'
+
+type Slot = { kind: 'item'; item: FridgeItem } | { kind: 'more'; n: number } | { kind: 'less' }
+
+function ItemGrid({ items, plate, maxRows, minRows = 1, gap = 14, rowGap = 14, label, onDetail, rowDecor, empty }: {
+  items: FridgeItem[]
+  plate: number
+  /** Rows the compartment shows before it compacts / folds. */
+  maxRows: number
+  /** Rows always drawn (the door always shows its three bins). */
+  minRows?: number
+  gap?: number
+  rowGap?: number
+  /** For accessibility labels: "Show 4 more on the Top shelf". */
+  label: string
+  onDetail: (d: Detail) => void
+  /** Drawn behind each row (the door's bins). */
+  rowDecor?: (row: number, top: number, size: number) => ReactNode
+  /** Shown when there are no items. */
+  empty: ReactNode
+}) {
+  const [width, setWidth] = useState(0)
+  const [expanded, setExpanded] = useState(false)
+  const n = items.length
+  const cols = (s: number) => Math.max(1, Math.floor((width + gap) / (s + gap)))
+  const compact = Math.max(MIN_PLATE, Math.round(plate * 0.8))
+
+  // Pick size and slots (see the rules above).
+  let size = plate
+  let perRow = cols(plate)
+  let slots: Slot[] = items.map(item => ({ kind: 'item', item }))
+  if (n > perRow * maxRows) {
+    size = compact
+    perRow = cols(compact)
+    const cap = perRow * maxRows
+    if (n > cap) {
+      slots = expanded
+        ? [...slots, { kind: 'less' }]
+        : [...slots.slice(0, cap - 1), { kind: 'more', n: n - (cap - 1) }]
+    }
+  }
+  const overflowing = n > perRow * maxRows
+  useEffect(() => {
+    if (!overflowing && expanded) setExpanded(false) // nothing left to fold away
+  }, [overflowing, expanded])
+
+  const rows = Math.max(minRows, Math.ceil(slots.length / perRow))
+  const height = rows * size + (rows - 1) * rowGap
+  const at = (i: number) => ({ left: (i % perRow) * (size + gap), top: Math.floor(i / perRow) * (size + rowGap) })
+  const move = WEB ? ({ transition: `left 320ms ${EASE}, top 320ms ${EASE}` } as object) : null
+
+  return (
+    <View onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ height: width ? height : plate, ...(WEB ? ({ transition: `height 320ms ${EASE}` } as object) : null) }}>
+      {width > 0 && rowDecor && Array.from({ length: rows }, (_, r) => <View key={`decor-${r}`}>{rowDecor(r, r * (size + rowGap), size)}</View>)}
+      {width > 0 && n === 0 && <View className="absolute left-0 right-0 top-0" style={{ height: size, justifyContent: 'flex-end' }}>{empty}</View>}
+      {width > 0 && slots.map((s, i) => {
+        const key = s.kind === 'item' ? s.item.id : s.kind
+        return (
+          <View key={key} className="absolute" style={{ ...at(i), width: size, height: size, ...move }}>
+            {s.kind === 'item' ? (
+              <FadeIn from={6}><Item item={s.item} plate={size} onDetail={onDetail} /></FadeIn>
+            ) : (
+              <FoldToggle size={size} more={s.kind === 'more' ? s.n : null} label={label} onPress={() => setExpanded(s.kind === 'more')} />
+            )}
+          </View>
+        )
+      })}
+    </View>
+  )
+}
+
+/** "+N" (expand) or "Less" (fold) — shaped like an item plate so it sits in the row naturally. */
+function FoldToggle({ size, more, label, onPress }: { size: number; more: number | null; label: string; onPress: () => void }) {
+  const { c } = useTheme()
+  const [hover, setHover] = useState(false)
+  return (
+    <Pressable
+      onPress={onPress}
+      onHoverIn={() => setHover(true)}
+      onHoverOut={() => setHover(false)}
+      accessibilityRole="button"
+      accessibilityLabel={more !== null ? `Show ${more} more on the ${label}` : `Show less on the ${label}`}
+      className="items-center justify-center rounded-full"
+      style={{
+        width: size, height: size, borderWidth: 2, borderStyle: 'dashed',
+        borderColor: hover ? c.textSoft : c.muted, backgroundColor: hover ? c.surface : c.frost,
+        ...(WEB ? ({ cursor: 'pointer', transition: 'background-color 150ms' } as object) : null),
+      }}
+    >
+      {more !== null ? (
+        <>
+          <Text className="font-display-bold leading-5 text-ink" style={{ fontSize: size > 50 ? 18 : 15 }}>+{more}</Text>
+          <Text className="text-[9px] font-bold uppercase tracking-wide text-mute">more</Text>
+        </>
+      ) : (
+        <>
+          <MaterialCommunityIcons name="chevron-up" size={size > 50 ? 20 : 17} color={c.textSoft} />
+          <Text className="text-[9px] font-bold uppercase tracking-wide text-mute">less</Text>
+        </>
+      )}
+    </Pressable>
+  )
+}
+
+type Compartment = { items: FridgeItem[]; plate: number; filtered: boolean; onDetail: (d: Detail) => void }
+
+function Shelf({ label, items, plate, filtered, onDetail, art }: Compartment & { label: string; art: string[] }) {
   const { c } = useTheme()
   return (
     <View className="px-5 pt-3">
       <Label right={items.length ? <Count n={items.length} /> : undefined}>{label}</Label>
-      <View style={[ROW, { paddingHorizontal: 4, minHeight: 80 }]}>
-        {items.length ? children : <EmptySpot art={art} text={filtered ? 'Nothing here matches' : 'Nothing here yet'} />}
+      <View style={{ paddingHorizontal: 4, minHeight: 72, justifyContent: 'flex-end' }}>
+        <ItemGrid items={items} plate={plate} maxRows={2} label={label} onDetail={onDetail}
+          empty={<EmptySpot art={art} text={filtered ? 'Nothing here matches' : 'Nothing here yet'} />} />
       </View>
       {/* Glass shelf: lit edge, tinted pane, soft shadow */}
-      <View style={{ marginHorizontal: -16, marginTop: 6 }}>
+      <View style={{ marginHorizontal: -16, marginTop: 10 }}>
         <View className="h-[2px] rounded-t" style={{ backgroundColor: c.surface, opacity: 0.9 }} />
         <View className="h-2" style={{ backgroundColor: c.glass, opacity: 0.85 }} />
         <View className="h-2 rounded-b-xl" style={{ backgroundColor: c.frost }} />
@@ -202,14 +329,16 @@ function Shelf({ label, items, filtered, art, children }: { label: string; items
   )
 }
 
-function Drawer({ label, items, filtered, children }: { label: string; items: FridgeItem[]; filtered: boolean; children: ReactNode }) {
+function Drawer({ items, plate, filtered, onDetail }: Compartment) {
   const { c, dark } = useTheme()
+  const label = title('drawer')
   return (
     <View className="px-3 pb-4 pt-3">
       <View className="px-2"><Label right={items.length ? <Count n={items.length} /> : undefined}>{label}</Label></View>
       <View className="overflow-hidden rounded-[22px] border" style={{ backgroundColor: dark ? '#1a2522' : '#e2eee9', borderColor: c.surface }}>
-        <View style={[ROW, { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 26, minHeight: 104 }]}>
-          {items.length ? children : <EmptySpot art={['apple', 'carrot', 'broccoli']} text={filtered ? 'Nothing here matches' : 'Crisper’s empty'} />}
+        <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 30, minHeight: 104 }}>
+          <ItemGrid items={items} plate={plate} maxRows={2} label={label} onDetail={onDetail}
+            empty={<EmptySpot art={['apple', 'carrot', 'broccoli']} text={filtered ? 'Nothing here matches' : 'Crisper’s empty'} />} />
         </View>
         {/* Frosted glass front, overlapping the bottom of what's inside */}
         <View pointerEvents="none" className="absolute bottom-0 left-0 right-0 h-9 items-center overflow-hidden border-t" style={{ borderColor: c.surface, backgroundColor: dark ? 'rgba(40,52,47,0.72)' : 'rgba(255,255,255,0.55)' }}>
@@ -221,34 +350,30 @@ function Drawer({ label, items, filtered, children }: { label: string; items: Fr
   )
 }
 
-/** The open door: its own raised panel with a gasket, clear bins, and a handle on its edge. */
-function Door({ items, wide, filtered, render }: { items: FridgeItem[]; wide: boolean; filtered: boolean; render: (i: FridgeItem) => ReactNode }) {
+/** The open door: its own raised panel with a gasket, three clear bins (one per row), and a handle. */
+function Door({ items, plate, filtered, onDetail, wide }: Compartment & { wide: boolean }) {
   const { c, dark } = useTheme()
-  const perBin = wide ? 3 : 6
-  const bins: FridgeItem[][] = []
-  for (let i = 0; i < items.length; i += perBin) bins.push(items.slice(i, i + perBin))
-  while (bins.length < 3) bins.push([])
-
+  const label = title('door')
+  // One bin per row: a tray behind the items and a clear lip in front of their bottoms.
+  const bin = (row: number, top: number, size: number) => (
+    <>
+      <View pointerEvents="none" className="absolute left-0 right-0 rounded-2xl" style={{ top: top - 8, height: size + 20, backgroundColor: dark ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.35)' }} />
+      <View pointerEvents="none" className="absolute rounded-b-2xl border" style={{ left: -4, right: -4, top: top + size - 12, height: 24, zIndex: 2, borderColor: c.surface, backgroundColor: dark ? 'rgba(47,63,56,0.6)' : 'rgba(214,230,223,0.6)' }} />
+    </>
+  )
   return (
     <View style={wide ? { width: 260 } : undefined}>
       <View
-        className={`overflow-hidden rounded-[28px] border px-3.5 pb-4 pt-4 ${CSS.door}`}
+        className={`overflow-hidden rounded-[28px] border px-3.5 pb-6 pt-4 ${CSS.door}`}
         style={[{ backgroundColor: c.enamel, borderColor: c.enamelEdge, borderLeftWidth: 8, borderLeftColor: dark ? '#2b3632' : '#e4ebe8' }, shadow.card]}
       >
         <Sheen left="22%" opacity={0.3} />
         <Sheen left="40%" opacity={0.2} />
         <InnerShade />
-        <View className="px-1"><Label right={items.length ? <Count n={items.length} /> : undefined}>{title('door')}</Label></View>
-        <View className="gap-3.5">
-          {bins.map((bin, b) => (
-            <View key={b} className="overflow-hidden rounded-2xl">
-              <View style={[ROW, { paddingHorizontal: 10, paddingTop: 10, paddingBottom: 16, minHeight: 88, columnGap: 10 }]}>
-                {bin.length ? bin.map(render) : b === 0 && items.length === 0 ? <EmptySpot art={['water', 'juice']} text={filtered ? 'No match' : 'Door’s empty'} compact /> : null}
-              </View>
-              {/* Clear bin front */}
-              <View pointerEvents="none" className="absolute bottom-0 left-0 right-0 h-7 rounded-b-2xl border" style={{ borderColor: c.surface, backgroundColor: dark ? 'rgba(47,63,56,0.6)' : 'rgba(214,230,223,0.6)' }} />
-            </View>
-          ))}
+        <View className="px-1"><Label right={items.length ? <Count n={items.length} /> : undefined}>{label}</Label></View>
+        <View style={{ paddingHorizontal: 10, paddingTop: 10 }}>
+          <ItemGrid items={items} plate={plate} maxRows={3} minRows={3} gap={10} rowGap={30} label={label} onDetail={onDetail} rowDecor={bin}
+            empty={<EmptySpot art={['water', 'juice']} text={filtered ? 'Nothing here matches' : 'Door’s empty'} compact />} />
         </View>
       </View>
       {/* The door's handle sits on its outer edge */}
@@ -257,7 +382,7 @@ function Door({ items, wide, filtered, render }: { items: FridgeItem[]; wide: bo
   )
 }
 
-function Freezer({ items, filtered, children }: { items: FridgeItem[]; filtered: boolean; children: ReactNode }) {
+function Freezer({ items, plate, filtered, onDetail }: Compartment) {
   const ICE = useIce()
   const { c, dark } = useTheme()
   return (
@@ -271,19 +396,23 @@ function Freezer({ items, filtered, children }: { items: FridgeItem[]; filtered:
       <Label
         color={ICE.text}
         right={
-          <View className="flex-row items-center gap-1.5 rounded-full px-2 py-0.5" style={{ backgroundColor: ICE.line }}>
-            <MaterialCommunityIcons name="thermometer-low" size={12} color={ICE.icon} />
-            <Text className="text-[10px] font-bold" style={{ color: ICE.text }}>−18 °C</Text>
+          <View className="flex-row items-center gap-2">
+            {items.length ? <Count n={items.length} /> : null}
+            <View className="flex-row items-center gap-1.5 rounded-full px-2 py-0.5" style={{ backgroundColor: ICE.line }}>
+              <MaterialCommunityIcons name="thermometer-low" size={12} color={ICE.icon} />
+              <Text className="text-[10px] font-bold" style={{ color: ICE.text }}>−18 °C</Text>
+            </View>
           </View>
         }
       >
         ❄  Freezer
       </Label>
-      <View style={[ROW, { paddingHorizontal: 4, minHeight: 80 }]}>
-        {items.length ? children : <EmptySpot art={['ice cream', 'peas']} text={filtered ? 'Nothing here matches' : 'Freezer’s empty. Tap ❄ on a card to freeze something.'} color={ICE.text} />}
+      <View style={{ paddingHorizontal: 4, minHeight: 72, justifyContent: 'flex-end' }}>
+        <ItemGrid items={items} plate={plate} maxRows={2} label={title('freezer')} onDetail={onDetail}
+          empty={<EmptySpot art={['ice cream', 'peas']} text={filtered ? 'Nothing here matches' : 'Freezer’s empty. Tap ❄ on a card to freeze something.'} color={ICE.text} />} />
       </View>
       {/* Wire rack */}
-      <View style={{ marginHorizontal: -8, marginTop: 8, gap: 3 }}>
+      <View style={{ marginHorizontal: -8, marginTop: 10, gap: 3 }}>
         <View className="h-[2px] rounded-full" style={{ backgroundColor: ICE.glass }} />
         <View className="h-[2px] rounded-full" style={{ backgroundColor: ICE.line }} />
       </View>
@@ -386,7 +515,6 @@ function Item({ item, plate, onDetail }: { item: FridgeItem; plate: number; onDe
       onPress={e => (hovered ? hide() : show(e))}
       accessibilityLabel={`${displayName(item.name)}, ${expiryLabel(item, now)}`}
       style={{
-        marginLeft: jitter(item.id + 'x', 3) + 2,
         opacity: pending ? 0.45 : 1,
         transform: [{ translateY: hovered ? -5 : 0 }, { scale: hovered ? 1.08 : 1 }],
         ...(WEB ? ({ transition: 'transform 160ms ease', cursor: 'pointer' } as object) : null),

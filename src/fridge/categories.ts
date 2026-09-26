@@ -54,8 +54,9 @@ const KEYWORDS: [FoodCategory, RegExp][] = [
   ['takeout', /takeout|take-out|leftover|chipotle|pizza|burrito|sushi|thai|pad |curry|ramen|noodle|wings|fries|kebab|shawarma|burger|dumpling|to-go/],
   ['meat', /chicken|beef|pork|bacon|ham|turkey|steak|sausage|salami|fish|salmon|tuna|shrimp|deli/],
   ['dairy', /milk|cheese|yogh?urt|butter|cream|egg|kefir/],
-  ['produce', /lettuce|spinach|kale|berr|apple|grape|carrot|broccoli|tomato|avocado|pepper|cucumber|onion|lemon|lime|herb|cilantro|basil|fruit|veg|salad|melon|mushroom/],
-  ['beverage', /juice|soda|water|beer|wine|kombucha|coffee|tea|lemonade|drink/],
+  // Drinks before produce, so orange juice / lemonade aren't filed as fruit.
+  ['beverage', /juice|soda|\bwater\b|beer|wine|kombucha|coffee|\btea\b|lemonade|drink|seltzer|\bcola\b/],
+  ['produce', /lettuce|spinach|kale|berr|apple|grape|carrot|broccoli|tomato|avocado|pepper|cucumber|onion|lemon|lime|herb|cilantro|basil|fruit|veg|salad|melon|mushroom|mango|peach|\bpears?\b|orange|banana|kiwi|plum|cherr|pineapple|nectarine|apricot|papaya|clementine|tangerine|mandarin|celery|scallion|zucchini|eggplant|\bcorn\b|potato|garlic|leek|cabbage|cauliflower|\bpeas?\b/],
   ['condiment', /ketchup|mayo|mustard|sauce|sriracha|dressing|jam|salsa|relish|pickle/],
 ]
 
