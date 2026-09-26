@@ -43,6 +43,14 @@ const IN_FRIDGE: Seed[] = [
   ['Hummus', 'other', 'Sabra', 2],
   ['Avocados', 'produce', null, 2],
   ['Pizza slices', 'takeout', 'Joe’s Pizza', 1],
+  ['Apples', 'produce', 'Honeycrisp', 1],
+  ['Grapes', 'produce', null, 2],
+  ['Lemons', 'produce', null, 1],
+  ['Cherries', 'produce', null, 3],
+  ['Watermelon slice', 'produce', null, 4],       // 2 days left
+  ['Kiwis', 'produce', 'Zespri', 1],
+  ['Bacon', 'meat', 'Applegate', 2],
+  ['Ketchup', 'condiment', 'Heinz', 5],
 ]
 
 // Freezer: months of shelf life, but the same "2 days before ITS date" rule applies.
@@ -72,6 +80,12 @@ const CAMERA_POOL: [string, FoodCategory, string | null][] = [
   ['Bell peppers', 'produce', null],
   ['Dijon mustard', 'condiment', 'Maille'],
   ['Tofu', 'other', 'Nasoya'],
+  ['Peaches', 'produce', null],
+  ['Pineapple', 'produce', 'Dole'],
+  ['Bananas', 'produce', null],
+  ['Pears', 'produce', null],
+  ['Oranges', 'produce', 'Sunkist'],
+  ['Mango', 'produce', null],
 ]
 
 /** A fresh in-fridge item with its location and estimated expiry filled in. */

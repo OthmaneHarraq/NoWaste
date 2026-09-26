@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions, type GestureResponderEvent } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
-import { CATEGORIES, CATEGORY_ORDER, LOCATIONS, displayName } from '../categories'
+import { CATEGORIES, LOCATIONS, displayName } from '../categories'
 import { PENDING_GRACE_MINUTES } from '../config'
 import { daysUntil, expiryLabel, freshnessOf } from '../freshness'
 import { useFridge } from '../FridgeProvider'
@@ -240,6 +240,8 @@ function Item({ item, scale, onHover }: { item: FridgeItem; scale: number; onHov
   const pending = item.status === 'pending_removal'
   // Standing things (bottles, cartons, jars) barely tilt; loose things lean more.
   const tilt = jitter(item.id, ['beverage', 'dairy', 'condiment'].includes(item.category) ? 2 : 7)
+  const f = FRESHNESS[freshness]
+  const flagged = freshness === 'soon' || freshness === 'expired'
 
   function show(e: GestureResponderEvent | { currentTarget?: unknown; nativeEvent?: unknown }) {
     setHovered(true)
@@ -271,14 +273,27 @@ function Item({ item, scale, onHover }: { item: FridgeItem; scale: number; onHov
         ...(Platform.OS === 'web' ? ({ transition: 'transform 160ms ease', cursor: 'pointer' } as object) : null),
       }}
     >
-      <FoodShape category={item.category} freshness={freshness} scale={scale} />
+      {/* Freshness halo behind things that need attention */}
+      {flagged && !pending && (
+        <View pointerEvents="none" className="absolute rounded-full" style={{ left: -3, right: -3, top: -2, bottom: 4, backgroundColor: f.hex, opacity: 0.12 }} />
+      )}
+      {/* The food itself, in its own colours */}
+      <FoodShape name={item.name} category={item.category} scale={scale} />
       {item.quantity > 1 && (
         <View className="absolute -right-2 -top-1.5 rounded-full border border-line bg-white px-1.5">
           <Text className="text-[10px] font-bold text-ink-soft">×{item.quantity}</Text>
         </View>
       )}
-      {/* Grounding shadow on the shelf */}
-      <View className="mx-auto h-1 rounded-full bg-[#17251f]" style={{ width: '70%', opacity: 0.08, marginTop: 1 }} />
+      {freshness === 'expired' && !pending && (
+        <View className="absolute -left-2 -top-1.5 h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-spoiled-500">
+          <Text className="text-[9px] font-extrabold text-white">!</Text>
+        </View>
+      )}
+      {/* Freshness base: the same green / amber / red as the card view's bottom stripe */}
+      <View
+        className="mx-auto rounded-full"
+        style={{ width: '82%', height: 5, marginTop: 3, backgroundColor: pending ? 'transparent' : f.hex, borderWidth: pending ? 1 : 0, borderStyle: 'dashed', borderColor: '#8a9a93' }}
+      />
     </Pressable>
   )
 }
@@ -332,16 +347,11 @@ function Tooltip({ hover, screenWidth }: { hover: NonNullable<Hover>; screenWidt
 function ShapeKey() {
   return (
     <View className="mt-5 flex-row flex-wrap items-center justify-center gap-x-5 gap-y-2 px-2">
-      {CATEGORY_ORDER.map(c => (
-        <View key={c} className="flex-row items-center gap-1.5">
-          <FoodShape category={c} freshness="unknown" scale={0.42} />
-          <Text className="text-xs text-ink-soft">{CATEGORIES[c].label}</Text>
-        </View>
-      ))}
+      <Text className="text-xs font-semibold text-ink-soft">The line under each item:</Text>
       <View className="flex-row items-center gap-3">
         {(['fresh', 'soon', 'expired'] as const).map(k => (
           <View key={k} className="flex-row items-center gap-1.5">
-            <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: FRESHNESS[k].hex }} />
+            <View style={{ width: 16, height: 5, borderRadius: 3, backgroundColor: FRESHNESS[k].hex }} />
             <Text className="text-xs text-ink-soft">{k === 'fresh' ? 'Fresh' : k === 'soon' ? 'Use within 2 days' : 'Past its date'}</Text>
           </View>
         ))}
