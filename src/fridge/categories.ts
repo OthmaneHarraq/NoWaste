@@ -1,5 +1,5 @@
 import type { MaterialCommunityIcons } from '@expo/vector-icons'
-import type { FoodCategory } from './types'
+import type { FoodCategory, FridgeLocation } from './types'
 
 type IconName = keyof typeof MaterialCommunityIcons.glyphMap
 
@@ -16,13 +16,27 @@ export const CATEGORIES: Record<FoodCategory, { label: string; icon: IconName; c
 
 export const CATEGORY_ORDER: FoodCategory[] = ['meat', 'dairy', 'produce', 'takeout', 'beverage', 'condiment', 'other']
 
-/** The fridge's shelves, top to bottom. Used for the "By shelf" dashboard view. */
-export const SHELVES: { title: string; categories: FoodCategory[] }[] = [
-  { title: 'Top shelf', categories: ['dairy', 'other'] },
-  { title: 'Middle shelf', categories: ['meat', 'takeout'] },
-  { title: 'Crisper drawer', categories: ['produce'] },
-  { title: 'Door', categories: ['beverage', 'condiment'] },
+/** Every location, top to bottom (bottom-freezer fridge). Used for the "By shelf" view. */
+export const LOCATIONS: { id: FridgeLocation; title: string }[] = [
+  { id: 'top_shelf', title: 'Top shelf' },
+  { id: 'middle_shelf', title: 'Middle shelf' },
+  { id: 'drawer', title: 'Crisper drawer' },
+  { id: 'door', title: 'Door' },
+  { id: 'freezer', title: 'Freezer' },
 ]
+
+// Where each category lives in the fridge. Nothing goes to the freezer by default.
+const HOME: Record<FoodCategory, Exclude<FridgeLocation, 'freezer'>> = {
+  dairy: 'top_shelf',
+  other: 'top_shelf',
+  meat: 'middle_shelf',
+  takeout: 'middle_shelf',
+  produce: 'drawer',
+  beverage: 'door',
+  condiment: 'door',
+}
+
+export const defaultLocation = (category: FoodCategory) => HOME[category]
 
 // Categories in the foods table (supabase/migrations) → dashboard categories.
 const DB_CATEGORY: Record<string, FoodCategory> = {

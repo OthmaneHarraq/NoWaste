@@ -4,6 +4,9 @@
 
 export type FoodCategory = 'meat' | 'dairy' | 'produce' | 'takeout' | 'beverage' | 'condiment' | 'other'
 
+/** Where an item sits. The four fridge spots follow the category; the freezer is the user's call. */
+export type FridgeLocation = 'top_shelf' | 'middle_shelf' | 'drawer' | 'door' | 'freezer'
+
 export type ItemStatus =
   | 'in_fridge'
   | 'pending_removal' // taken out, waiting to see if it comes back
@@ -18,7 +21,9 @@ export type FridgeItem = {
   /** Restaurant for takeout, brand for packaged goods. */
   source: string | null
   quantity: number
+  location: FridgeLocation
   added_at: string          // ISO timestamp
+  /** From the backend when it has one (fridge only), else estimated by ./expiration.ts. */
   expires_at: string | null // ISO timestamp
   status: ItemStatus
   /** When it entered pending_removal (and, once resolved, when it left the fridge). */
@@ -63,6 +68,9 @@ export interface FridgeSource {
   markUsed(item: FridgeItem): Promise<string | null>
   /** Confirmed it went in the bin. */
   markThrownAway(item: FridgeItem): Promise<string | null>
+  /** Freezer ↔ fridge. Moving to the freezer re-estimates the date from added_at;
+   *  moving out starts the fridge clock from now (it's thawing). */
+  moveTo(item: FridgeItem, where: 'freezer' | 'fridge'): Promise<string | null>
   /** A pending_removal item came back. */
   putBack(item: FridgeItem): Promise<string | null>
   addItem(name: string): Promise<string | null>

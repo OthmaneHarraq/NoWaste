@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import { useToast } from '@/ui/Toast'
 import { displayName } from './categories'
 import { USE_MOCK_DATA } from './config'
+import { estimateExpiry } from './expiration'
 import { expiryLabel, freshnessOf, isCurrent, needsAction, type Freshness } from './freshness'
 import { notifyBrowser } from './browserNotifications'
 import { createLiveSource } from './liveSource'
@@ -23,6 +24,7 @@ type FridgeContextValue = {
   markUsed: (item: FridgeItem) => Promise<void>
   markThrownAway: (item: FridgeItem) => Promise<void>
   putBack: (item: FridgeItem) => Promise<void>
+  moveTo: (item: FridgeItem, where: 'freezer' | 'fridge') => Promise<void>
   addItem: (name: string) => Promise<boolean>
   undo: (entry: ActivityEntry) => Promise<void>
   correct: (entry: ActivityEntry, name: string, action: 'in' | 'out') => Promise<void>
@@ -79,6 +81,14 @@ export function FridgeProvider({ householdId, children }: { householdId: string;
     },
     putBack: async item => {
       await run(source.putBack(item), { tone: 'info', title: `${displayName(item.name)} is back in the fridge` })
+    },
+    moveTo: async (item, where) => {
+      // Same estimate the sources use, just for the toast text.
+      const until = new Date(where === 'freezer' ? estimateExpiry(item.category, 'freezer', item.added_at) : estimateExpiry(item.category, 'fridge', new Date()))
+        .toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      await run(source.moveTo(item, where), where === 'freezer'
+        ? { tone: 'info', title: `${displayName(item.name)} is in the freezer`, body: `Good until about ${until} now.` }
+        : { tone: 'info', title: `${displayName(item.name)} is thawing in the fridge`, body: `Use it by about ${until}.` })
     },
     addItem: name => run(source.addItem(name)),
     undo: async entry => {

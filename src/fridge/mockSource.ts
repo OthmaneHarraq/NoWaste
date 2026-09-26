@@ -2,10 +2,11 @@
 // adds / removes / returns things every so often. Everything lives in memory and
 // resets on reload. Turn on with EXPO_PUBLIC_USE_MOCK_DATA=true.
 
-import { categorize } from './categories'
+import { categorize, defaultLocation } from './categories'
 import { PENDING_GRACE_MINUTES } from './config'
+import { estimateExpiry } from './expiration'
 import { daysUntil } from './freshness'
-import type { ActivityEntry, ActivityKind, FoodCategory, FridgeItem, FridgeSnapshot, FridgeSource } from './types'
+import type { ActivityEntry, ActivityKind, FoodCategory, FridgeItem, FridgeLocation, FridgeSnapshot, FridgeSource } from './types'
 
 const MIN = 60_000
 const DAY = 86_400_000
@@ -18,44 +19,69 @@ function dayOffset(days: number, from = new Date()) {
   return new Date(from.getFullYear(), from.getMonth(), from.getDate() + days, 12).toISOString()
 }
 const ago = (ms: number) => new Date(Date.now() - ms).toISOString()
+/** Some time on the day `days` ago (an hour ago for today), varied per item. */
+const addedAt = (days: number, name: string) =>
+  days === 0 ? ago(3_600_000) : new Date(new Date(dayOffset(-days)).getTime() - (name.length % 4) * 3_600_000).toISOString()
 
-type Seed = [name: string, category: FoodCategory, source: string | null, expiresInDays: number | null, addedDaysAgo: number]
+// Items carry no hand-picked dates: expiry comes from estimateExpiry(category, location,
+// added_at), same as live. "Added N days ago" is chosen so the fridge has a realistic mix
+// (days left = shelf life − N), e.g. chicken: 4-day meat life, added 3 days ago → 1 day left.
+type Seed = [name: string, category: FoodCategory, source: string | null, addedDaysAgo: number]
 
 const IN_FRIDGE: Seed[] = [
-  ['Chicken breast', 'meat', 'Bell & Evans', 1, 1],
-  ['Chipotle burrito bowl', 'takeout', 'Chipotle', 1, 2],
-  ['Pad see ew', 'takeout', 'Thai Basil', 0, 3],
-  ['Strawberries', 'produce', 'Driscoll’s', -1, 6],
-  ['Baby spinach', 'produce', 'Earthbound Farm', 2, 4],
-  ['Greek yogurt', 'dairy', 'Fage', 6, 5],
-  ['Sharp cheddar', 'dairy', 'Tillamook', 18, 9],
-  ['Eggs', 'dairy', 'Vital Farms', 21, 7],
-  ['Salmon fillet', 'meat', 'Whole Foods', 3, 0],
-  ['Oat milk', 'beverage', 'Oatly', 9, 3],
-  ['Sriracha', 'condiment', 'Huy Fong', 140, 40],
-  ['Hummus', 'other', 'Sabra', 5, 2],
-  ['Avocados', 'produce', null, 4, 1],
-  ['Pizza slices', 'takeout', 'Joe’s Pizza', 3, 1],
+  ['Chicken breast', 'meat', 'Bell & Evans', 3],          // 1 day left
+  ['Chipotle burrito bowl', 'takeout', 'Chipotle', 2],    // 1 day left
+  ['Pad see ew', 'takeout', 'Thai Basil', 3],             // today
+  ['Strawberries', 'produce', 'Driscoll’s', 7],           // expired yesterday
+  ['Baby spinach', 'produce', 'Earthbound Farm', 4],      // 2 days left
+  ['Greek yogurt', 'dairy', 'Fage', 4],
+  ['Sharp cheddar', 'dairy', 'Tillamook', 3],
+  ['Eggs', 'dairy', 'Vital Farms', 2],
+  ['Salmon fillet', 'meat', 'Whole Foods', 1],
+  ['Oat milk', 'beverage', 'Oatly', 5],
+  ['Sriracha', 'condiment', 'Huy Fong', 12],
+  ['Hummus', 'other', 'Sabra', 2],
+  ['Avocados', 'produce', null, 2],
+  ['Pizza slices', 'takeout', 'Joe’s Pizza', 1],
 ]
 
-const PENDING: [name: string, category: FoodCategory, source: string | null, expiresInDays: number, removedMinsAgo: number][] = [
-  ['Orange juice', 'beverage', 'Tropicana', 4, 2],
-  ['Leftover pasta', 'other', null, 1, Math.max(1, PENDING_GRACE_MINUTES - 3)],
+// Freezer: months of shelf life, but the same "2 days before ITS date" rule applies.
+const IN_FREEZER: Seed[] = [
+  ['Vanilla ice cream', 'dairy', 'Jeni’s', 59],           // 2-month life → 1 day left
+  ['Frozen peas', 'produce', 'Birds Eye', 120],
+  ['Ground beef', 'meat', 'Pat LaFrieda', 40],
+  ['Pork dumplings', 'other', 'Bibigo', 30],
+  ['Leftover chili', 'takeout', null, 20],
+  ['Mixed berries', 'produce', 'Wyman’s', 90],
+]
+
+const PENDING: [name: string, category: FoodCategory, source: string | null, addedDaysAgo: number, removedMinsAgo: number][] = [
+  ['Orange juice', 'beverage', 'Tropicana', 10, 2],
+  ['Leftover pasta', 'other', null, 6, Math.max(1, PENDING_GRACE_MINUTES - 3)],
 ]
 
 // Things the fake camera may "see" going in.
-const CAMERA_POOL: [string, FoodCategory, string | null, number][] = [
-  ['Sushi platter', 'takeout', 'Sushi Nakazawa', 1],
-  ['Whole milk', 'dairy', 'Horizon', 7],
-  ['Blueberries', 'produce', null, 5],
-  ['Ground beef', 'meat', 'Pat LaFrieda', 2],
-  ['Kombucha', 'beverage', 'GT’s', 30],
-  ['Butter', 'dairy', 'Kerrygold', 30],
-  ['Pho', 'takeout', 'Pho Saigon', 2],
-  ['Bell peppers', 'produce', null, 7],
-  ['Dijon mustard', 'condiment', 'Maille', 180],
-  ['Tofu', 'other', 'Nasoya', 5],
+const CAMERA_POOL: [string, FoodCategory, string | null][] = [
+  ['Sushi platter', 'takeout', 'Sushi Nakazawa'],
+  ['Whole milk', 'dairy', 'Horizon'],
+  ['Blueberries', 'produce', null],
+  ['Chicken thighs', 'meat', 'Bell & Evans'],
+  ['Kombucha', 'beverage', 'GT’s'],
+  ['Butter', 'dairy', 'Kerrygold'],
+  ['Pho', 'takeout', 'Pho Saigon'],
+  ['Bell peppers', 'produce', null],
+  ['Dijon mustard', 'condiment', 'Maille'],
+  ['Tofu', 'other', 'Nasoya'],
 ]
+
+/** A fresh in-fridge item with its location and estimated expiry filled in. */
+function makeItem(name: string, category: FoodCategory, source: string | null, added: string, location: FridgeLocation = defaultLocation(category)): FridgeItem {
+  return {
+    id: uid('i'), name, category, source, quantity: 1, location,
+    added_at: added, expires_at: estimateExpiry(category, location, added),
+    status: 'in_fridge', removed_at: null, image_url: null,
+  }
+}
 
 // Tiny deterministic PRNG so the history (and the charts) look the same every reload.
 function rng(seed: number) {
@@ -87,6 +113,7 @@ function seedHistory(): FridgeItem[] {
         id: uid('h'),
         name, category, source,
         quantity: 1,
+        location: defaultLocation(category),
         added_at: new Date(removed.getTime() - (2 + Math.floor(rand() * 6)) * DAY).toISOString(),
         expires_at: dayOffset(wasted ? -1 - Math.floor(rand() * 3) : 1 + Math.floor(rand() * 4), removed),
         status: wasted ? (rand() < 0.5 ? 'thrown_away' : 'expired') : 'consumed',
@@ -117,16 +144,11 @@ function activityFor(item: FridgeItem, kind: ActivityKind, at: string, via: Acti
 
 export function createMockSource(): FridgeSource {
   const items: FridgeItem[] = [
-    ...IN_FRIDGE.map(([name, category, source, exp, added]): FridgeItem => ({
-      id: uid('i'), name, category, source, quantity: 1,
-      added_at: ago(added * DAY + 3_600_000 * (1 + (name.length % 7))),
-      expires_at: exp === null ? null : dayOffset(exp),
-      status: 'in_fridge', removed_at: null, image_url: null,
-    })),
-    ...PENDING.map(([name, category, source, exp, mins]): FridgeItem => ({
-      id: uid('i'), name, category, source, quantity: 1,
-      added_at: ago(2 * DAY), expires_at: dayOffset(exp),
-      status: 'pending_removal', removed_at: ago(mins * MIN), image_url: null,
+    ...IN_FRIDGE.map(([name, category, source, added]) => makeItem(name, category, source, addedAt(added, name))),
+    ...IN_FREEZER.map(([name, category, source, added]) => makeItem(name, category, source, addedAt(added, name), 'freezer')),
+    ...PENDING.map(([name, category, source, added, mins]): FridgeItem => ({
+      ...makeItem(name, category, source, addedAt(added, name)),
+      status: 'pending_removal', removed_at: ago(mins * MIN),
     })),
     ...seedHistory(),
   ]
@@ -182,12 +204,8 @@ export function createMockSource(): FridgeSource {
       i.removed_at = new Date().toISOString()
       log(i, 'removed', 'camera')
     } else {
-      const [name, category, source, days] = CAMERA_POOL[Math.floor(Math.random() * CAMERA_POOL.length)]
-      const item: FridgeItem = {
-        id: uid('i'), name, category, source, quantity: 1,
-        added_at: new Date().toISOString(), expires_at: dayOffset(days),
-        status: 'in_fridge', removed_at: null, image_url: null,
-      }
+      const [name, category, source] = CAMERA_POOL[Math.floor(Math.random() * CAMERA_POOL.length)]
+      const item = makeItem(name, category, source, new Date().toISOString())
       items.push(item)
       log(item, 'added', 'camera')
     }
@@ -233,6 +251,18 @@ export function createMockSource(): FridgeSource {
       return done()
     },
 
+    moveTo(item, where) {
+      const i = find(item.id)
+      if (i) {
+        i.location = where === 'freezer' ? 'freezer' : defaultLocation(i.category)
+        // Into the freezer: re-estimate from when it was bought. Out: it's thawing, clock starts now.
+        i.expires_at = where === 'freezer'
+          ? estimateExpiry(i.category, 'freezer', i.added_at)
+          : estimateExpiry(i.category, 'fridge', new Date())
+      }
+      return done()
+    },
+
     putBack(item) {
       const i = find(item.id)
       if (i) {
@@ -244,13 +274,7 @@ export function createMockSource(): FridgeSource {
     },
 
     addItem(name) {
-      const category = categorize(null, name)
-      const item: FridgeItem = {
-        id: uid('i'), name: name.trim(), category, source: null, quantity: 1,
-        added_at: new Date().toISOString(),
-        expires_at: dayOffset({ meat: 2, takeout: 3, produce: 5, dairy: 10, beverage: 10, condiment: 90, other: 7 }[category]),
-        status: 'in_fridge', removed_at: null, image_url: null,
-      }
+      const item = makeItem(name.trim(), categorize(null, name), null, new Date().toISOString())
       items.push(item)
       log(item, 'added', 'manual')
       return done()

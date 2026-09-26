@@ -55,6 +55,7 @@ function ActionRow({ item, index, last }: { item: FridgeItem; index: number; las
           <Text numberOfLines={1} className="text-[15px] font-semibold text-ink">{displayName(item.name)}</Text>
           <Text className={`text-[13px] font-semibold ${f.text}`}>
             {expiryLabel(item, now)}
+            {item.location === 'freezer' ? <Text className="font-normal" style={{ color: '#4a7aa0' }}>  ·  ❄ Freezer</Text> : null}
             {item.source && item.category === 'takeout' ? <Text className="font-normal text-mute">  ·  {item.source}</Text> : null}
           </Text>
         </View>

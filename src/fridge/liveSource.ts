@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { supabase } from '@/lib/supabase'
 import { correctEvent, recordEvent, undoEvent } from '@/data/fridge'
 import type { FridgeEvent } from '@/types/db'
-import { buildSnapshot, type InventoryRow, type Overrides } from './adapter'
+import { buildSnapshot, type InventoryRow, type Moves, type Overrides } from './adapter'
 import type { ConnectionState, FridgeSnapshot, FridgeSource } from './types'
 
 const HISTORY_DAYS = 30
@@ -10,13 +10,16 @@ const HISTORY_DAYS = 30
 /** Live Supabase data for one household, kept fresh by Realtime. */
 export function createLiveSource(householdId: string): FridgeSource {
   const overridesKey = `nowaste:overrides:${householdId}`
+  // No location column yet, so freezer moves are remembered on this device.
+  const movesKey = `nowaste:moves:${householdId}`
   let inventory: InventoryRow[] = []
   let events: FridgeEvent[] = []
   let catalog = new Map<string, string | null>()
   let overrides: Overrides = {}
+  let moves: Moves = {}
   let listener: ((s: FridgeSnapshot) => void) | null = null
 
-  const emit = () => listener?.(buildSnapshot({ inventory, events, catalog, overrides }))
+  const emit = () => listener?.(buildSnapshot({ inventory, events, catalog, overrides, moves }))
 
   async function load() {
     const since = new Date(Date.now() - HISTORY_DAYS * 86_400_000).toISOString()
@@ -64,6 +67,7 @@ export function createLiveSource(householdId: string): FridgeSource {
 
       ;(async () => {
         overrides = JSON.parse((await AsyncStorage.getItem(overridesKey).catch(() => null)) ?? '{}')
+        moves = JSON.parse((await AsyncStorage.getItem(movesKey).catch(() => null)) ?? '{}')
         const { data } = await supabase.from('foods').select('name, category')
         catalog = new Map((data ?? []).map(f => [f.name.toLowerCase(), f.category]))
         await load()
@@ -102,6 +106,14 @@ export function createLiveSource(householdId: string): FridgeSource {
     async markThrownAway(item) {
       if (item.status === 'pending_removal') return saveOverride(item.eventId, 'thrown_away').then(() => null)
       return takeOut(item.name, 'thrown_away')
+    },
+
+    async moveTo(item, where) {
+      if (item.status !== 'in_fridge') return 'Only items in the fridge can be moved'
+      moves = { ...moves, [item.id]: { where, at: new Date().toISOString() } }
+      emit()
+      await AsyncStorage.setItem(movesKey, JSON.stringify(moves)).catch(() => {})
+      return null
     },
 
     async putBack(item) {

@@ -16,11 +16,16 @@ export default function FridgeScreen() {
   const { width } = useWindowDimensions()
   const [category, setCategory] = useState<FoodCategory | 'all'>('all')
   const [sort, setSort] = useState<SortMode>('shelf')
+  const [where, setWhere] = useState<Where>('all')
+  const phone = width < 600
 
   // Sidebar tab bar eats ~200px; below this the side panels stack above/below the fridge.
   const twoColumn = width >= 1260
 
-  const visible = category === 'all' ? current : current.filter(i => i.category === category)
+  const visible = current.filter(i =>
+    (category === 'all' || i.category === category) &&
+    (where === 'all' || (where === 'freezer') === (i.location === 'freezer')))
+  const frozen = current.filter(i => i.location === 'freezer').length
   const counts = new Map<FoodCategory, number>()
   for (const i of current) counts.set(i.category, (counts.get(i.category) ?? 0) + 1)
   const fresh = current.filter(i => i.status === 'in_fridge' && freshnessOf(i, now) === 'fresh').length
@@ -34,29 +39,50 @@ export default function FridgeScreen() {
     )
   }
 
+  const chips = (
+    <>
+      <Chip label="All" count={current.length} active={category === 'all'} onPress={() => setCategory('all')} />
+      {CATEGORY_ORDER.filter(c => counts.get(c)).map(c => (
+        <Chip key={c} label={CATEGORIES[c].label} icon={CATEGORIES[c].icon} color={CATEGORIES[c].color} count={counts.get(c)!} active={category === c} onPress={() => setCategory(category === c ? 'all' : c)} />
+      ))}
+    </>
+  )
+  const controls = (
+    <View className="flex-row flex-wrap gap-2">
+      <Segmented value={where} onChange={setWhere} options={WHERE_OPTIONS} />
+      <Segmented value={sort} onChange={setSort} options={SORT_OPTIONS} />
+    </View>
+  )
+  // Phone: one swipeable row of chips instead of three wrapped rows.
+  const filters = phone ? (
+    <View className="gap-3">
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingRight: 14 }} style={{ marginRight: -14 }}>
+        {chips}
+      </ScrollView>
+      {controls}
+    </View>
+  ) : (
+    <View className="flex-row flex-wrap items-center justify-between gap-3">
+      <View className="flex-1 flex-row flex-wrap gap-1.5" style={{ minWidth: 260 }}>{chips}</View>
+      {controls}
+    </View>
+  )
+
   const fridge = (
     <View className="gap-4">
       <View className="flex-row flex-wrap items-end justify-between gap-3">
         <View>
-          <Text className="text-[28px] font-extrabold tracking-tight text-ink">What’s in the fridge</Text>
+          <Text className={`${phone ? 'text-[24px]' : 'text-[28px]'} font-extrabold tracking-tight text-ink`}>What’s in the fridge</Text>
           <Text className="mt-0.5 text-sm text-ink-soft">
-            {current.length} items · {fresh} fresh{pending ? ` · ${pending} taken out` : ''}
+            {current.length} items · {fresh} fresh{frozen ? ` · ${frozen} frozen` : ''}{pending ? ` · ${pending} taken out` : ''}
           </Text>
         </View>
-        <AddItem />
+        <AddItem full={phone} />
       </View>
 
-      <View className="flex-row flex-wrap items-center justify-between gap-3">
-        <View className="flex-1 flex-row flex-wrap gap-1.5" style={{ minWidth: 260 }}>
-          <Chip label="All" count={current.length} active={category === 'all'} onPress={() => setCategory('all')} />
-          {CATEGORY_ORDER.filter(c => counts.get(c)).map(c => (
-            <Chip key={c} label={CATEGORIES[c].label} icon={CATEGORIES[c].icon} color={CATEGORIES[c].color} count={counts.get(c)!} active={category === c} onPress={() => setCategory(category === c ? 'all' : c)} />
-          ))}
-        </View>
-        <Segmented value={sort} onChange={setSort} />
-      </View>
+      {filters}
 
-      <FridgeShelves items={visible} sort={sort} filtered={category !== 'all'} />
+      <FridgeShelves items={visible} sort={sort} filtered={category !== 'all' || where !== 'all'} />
       <Legend />
     </View>
   )
@@ -82,7 +108,11 @@ export default function FridgeScreen() {
   )
 }
 
-function AddItem() {
+type Where = 'all' | 'fridge' | 'freezer'
+const WHERE_OPTIONS: { v: Where; label: string }[] = [{ v: 'all', label: 'Everywhere' }, { v: 'fridge', label: 'Fridge' }, { v: 'freezer', label: 'Freezer' }]
+const SORT_OPTIONS: { v: SortMode; label: string }[] = [{ v: 'shelf', label: 'By shelf' }, { v: 'expiry', label: 'By expiry' }]
+
+function AddItem({ full }: { full: boolean }) {
   const { addItem } = useFridge()
   const [name, setName] = useState('')
   async function submit() {
@@ -90,7 +120,7 @@ function AddItem() {
     if (await addItem(name.trim())) setName('')
   }
   return (
-    <View className="flex-row items-center rounded-xl border border-line bg-white pl-3">
+    <View className={`flex-row items-center rounded-xl border border-line bg-white pl-3 ${full ? 'w-full' : ''}`}>
       <MaterialCommunityIcons name="plus" size={16} color="#8a9a93" />
       <TextInput
         value={name}
@@ -99,7 +129,7 @@ function AddItem() {
         placeholder="Add by hand (e.g. milk)"
         placeholderTextColor="#8a9a93"
         returnKeyType="done"
-        className="w-48 px-2 py-2.5 text-sm text-ink"
+        className={`${full ? 'flex-1' : 'w-48'} px-2 py-2.5 text-sm text-ink`}
         style={{ outlineStyle: 'none' } as object}
       />
       <Pressable onPress={submit} className="m-1 rounded-lg bg-ink px-3 py-1.5 active:opacity-80">
@@ -129,8 +159,7 @@ function Chip({ label, count, active, onPress, icon, color }: {
   )
 }
 
-function Segmented({ value, onChange }: { value: SortMode; onChange: (v: SortMode) => void }) {
-  const options: { v: SortMode; label: string }[] = [{ v: 'shelf', label: 'By shelf' }, { v: 'expiry', label: 'By expiry' }]
+function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { v: T; label: string }[] }) {
   return (
     <View className="flex-row rounded-xl bg-[#e8eeeb] p-0.5">
       {options.map(o => (
@@ -159,6 +188,10 @@ function Legend() {
       <View className="flex-row items-center gap-1.5">
         <View style={{ width: 14, height: 10, borderRadius: 3, borderWidth: 1, borderStyle: 'dashed', borderColor: '#8a9a93' }} />
         <Text className="text-xs text-ink-soft">Taken out, waiting to see if it comes back</Text>
+      </View>
+      <View className="flex-row items-center gap-1.5">
+        <MaterialCommunityIcons name="snowflake" size={12} color="#5b8fb9" />
+        <Text className="text-xs text-ink-soft">Frozen: dated by freezer shelf life</Text>
       </View>
     </View>
   )
