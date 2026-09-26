@@ -1,0 +1,32 @@
+@import 'tailwindcss';
+@import 'uniwind';
+
+/* NoWaste palette. Freshness colors are used ONLY for freshness state:
+   fresh = green, soon = amber, spoiled = red. Keep src/ui/theme.ts in sync. */
+@theme {
+  --color-ink: #17251f;
+  --color-ink-soft: #4c5d55;
+  --color-mute: #8a9a93;
+  --color-paper: #fafbf9;
+  --color-frost: #f1f6f4;
+  --color-line: #e2e9e5;
+  --color-glass: #cfe2db;
+
+  --color-fresh-50: #eef8f1;
+  --color-fresh-100: #d5eedc;
+  --color-fresh-500: #2f9e5b;
+  --color-fresh-600: #23804a;
+  --color-fresh-700: #1b653b;
+
+  --color-soon-50: #fff7e8;
+  --color-soon-100: #fcebc6;
+  --color-soon-500: #e39a1b;
+  --color-soon-600: #b8760a;
+  --color-soon-700: #8a5806;
+
+  --color-spoiled-50: #fdefed;
+  --color-spoiled-100: #f8d3ce;
+  --color-spoiled-500: #d9493a;
+  --color-spoiled-600: #b53427;
+  --color-spoiled-700: #8a2419;
+}

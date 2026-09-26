@@ -32,7 +32,8 @@
           "cameraPermission": "Allow NoWaste to use the camera to scan barcodes and watch the fridge door.",
           "barcodeScannerEnabled": true
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }
