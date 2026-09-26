@@ -4,7 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SHELVES } from '../categories'
 import { daysUntil } from '../freshness'
 import type { FridgeItem } from '../types'
-import { CARD_WIDTH, ItemCard } from './ItemCard'
+import { CARD_MIN_WIDTH, ItemCard } from './ItemCard'
 
 export type SortMode = 'shelf' | 'expiry'
 
@@ -20,7 +20,9 @@ const byExpiry = (a: FridgeItem, b: FridgeItem) =>
  */
 export function FridgeShelves({ items, sort, filtered }: { items: FridgeItem[]; sort: SortMode; filtered: boolean }) {
   const [width, setWidth] = useState(0)
-  const perRow = Math.max(1, Math.floor((width - PAD * 2 + GAP) / (CARD_WIDTH + GAP)))
+  const perRow = Math.max(1, Math.floor((width - PAD * 2 + GAP) / (CARD_MIN_WIDTH + GAP)))
+  // Stretch cards so each shelf row fills edge to edge (capped so few items don't balloon).
+  const cardWidth = Math.min(220, Math.floor((width - PAD * 2 - 10 - GAP * (perRow - 1)) / perRow))
 
   const shelves =
     sort === 'shelf'
@@ -52,7 +54,7 @@ export function FridgeShelves({ items, sort, filtered }: { items: FridgeItem[]; 
               </Text>
             )}
             <View className="flex-row items-end" style={{ gap: GAP, minHeight: row.length ? undefined : 64 }}>
-              {row.map((item, i) => <ItemCard key={item.id} item={item} index={r * perRow + i} />)}
+              {row.map((item, i) => <ItemCard key={item.id} item={item} index={r * perRow + i} width={cardWidth} />)}
               {row.length === 0 && (
                 <View className="flex-1 flex-row items-center justify-center gap-2 pb-3">
                   <MaterialCommunityIcons name="fridge-outline" size={16} color="#b7c6bf" />

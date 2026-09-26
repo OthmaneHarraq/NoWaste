@@ -35,7 +35,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <View
         pointerEvents="box-none"
         className="absolute gap-2"
-        style={width >= 700 ? { right: 20, bottom: 20, width: 360 } : { top: 64, left: 12, right: 12 }}
+        // Wide: bottom-right, clear of content (above the tab bar when it's at the bottom).
+        style={width >= 700 ? { right: 20, bottom: width >= 900 ? 20 : 76, width: 360 } : { top: 64, left: 12, right: 12 }}
       >
         {toasts.map(t => <ToastCard key={t.id} toast={t} onDone={() => dismiss(t.id)} />)}
       </View>

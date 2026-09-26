@@ -17,8 +17,8 @@ export default function FridgeScreen() {
   const [category, setCategory] = useState<FoodCategory | 'all'>('all')
   const [sort, setSort] = useState<SortMode>('shelf')
 
-  // Sidebar tab bar eats ~200px on wide screens.
-  const twoColumn = width >= 1180
+  // Sidebar tab bar eats ~200px; below this the side panels stack above/below the fridge.
+  const twoColumn = width >= 1260
 
   const visible = category === 'all' ? current : current.filter(i => i.category === category)
   const counts = new Map<FoodCategory, number>()

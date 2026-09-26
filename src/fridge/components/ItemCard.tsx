@@ -8,10 +8,10 @@ import { useFridge } from '../FridgeProvider'
 import type { FridgeItem } from '../types'
 import { CategoryIcon, FRESHNESS, FreshnessChip } from './visuals'
 
-export const CARD_WIDTH = 172
+export const CARD_MIN_WIDTH = 164
 
 /** One item sitting on a shelf. Pending-removal items show as a ghost with Put back / Finished. */
-export function ItemCard({ item, index = 0 }: { item: FridgeItem; index?: number }) {
+export function ItemCard({ item, index = 0, width = CARD_MIN_WIDTH }: { item: FridgeItem; index?: number; width?: number }) {
   const { now, markUsed, markThrownAway, putBack } = useFridge()
   const freshness = freshnessOf(item, now)
   const f = FRESHNESS[freshness]
@@ -21,7 +21,7 @@ export function ItemCard({ item, index = 0 }: { item: FridgeItem; index?: number
     : 0
 
   return (
-    <FadeIn delay={Math.min(index, 12) * 35} style={{ width: CARD_WIDTH }}>
+    <FadeIn delay={Math.min(index, 12) * 35} style={{ width }}>
       <Pulse active={!pending && (freshness === 'soon' || freshness === 'expired')} color={f.hex}>
         <View
           className={`overflow-hidden rounded-2xl border bg-white ${pending ? 'border-dashed border-mute' : 'border-line'}`}

@@ -1,41 +1,102 @@
 import { useState } from 'react'
-import { FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
-import { useHousehold } from '@/household'
-import { correctEvent, undoEvent, useEvents } from '@/data/fridge'
-import { colors } from '@/ui/theme'
-import type { FridgeEvent } from '@/types/db'
+import { Modal, Pressable, SectionList, Text, TextInput, View, useWindowDimensions } from 'react-native'
+import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { useFridge } from '@/fridge/FridgeProvider'
+import { displayName } from '@/fridge/categories'
+import { USE_MOCK_DATA } from '@/fridge/config'
+import { CategoryIcon } from '@/fridge/components/visuals'
+import type { ActivityEntry, ActivityKind } from '@/fridge/types'
+import { FadeIn } from '@/ui/motion'
 
-// OWNER: phone app team. Everything the camera (or a person) logged, newest first,
+// OWNER: phone app team. Everything that went in or out, grouped by day, newest first,
 // with one-tap Undo and Fix. Fixing a name teaches the household an alias.
-export default function ActivityScreen() {
-  const { household } = useHousehold()
-  const { events, loading, error } = useEvents(household?.id)
-  const [fixing, setFixing] = useState<FridgeEvent | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
 
-  async function undo(ev: FridgeEvent) {
-    const { error } = await undoEvent(ev.id)
-    setMessage(error)
+const KIND: Record<ActivityKind, { verb: string; icon: keyof typeof MaterialCommunityIcons.glyphMap; color: string; bg: string }> = {
+  added:       { verb: 'Added',        icon: 'arrow-down',             color: '#17251f', bg: '#e8eeeb' },
+  removed:     { verb: 'Took out',     icon: 'arrow-up',               color: '#4c5d55', bg: '#e8eeeb' },
+  returned:    { verb: 'Put back',     icon: 'undo-variant',           color: '#4c5d55', bg: '#e8eeeb' },
+  consumed:    { verb: 'Used up',      icon: 'silverware-fork-knife',  color: '#1b653b', bg: '#d5eedc' },
+  expired:     { verb: 'Expired',      icon: 'clock-remove-outline',   color: '#8a2419', bg: '#f8d3ce' },
+  thrown_away: { verb: 'Threw away',   icon: 'trash-can-outline',      color: '#8a2419', bg: '#f8d3ce' },
+}
+
+type Filter = 'all' | 'moves' | 'saved' | 'wasted'
+const FILTERS: { key: Filter; label: string; kinds: ActivityKind[] | null }[] = [
+  { key: 'all', label: 'Everything', kinds: null },
+  { key: 'moves', label: 'In & out', kinds: ['added', 'removed', 'returned'] },
+  { key: 'saved', label: 'Saved', kinds: ['consumed'] },
+  { key: 'wasted', label: 'Wasted', kinds: ['expired', 'thrown_away'] },
+]
+
+function dayLabel(iso: string, now: Date) {
+  const d = new Date(iso)
+  const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const diff = Math.round((start(now) - start(d)) / 86_400_000)
+  if (diff === 0) return 'Today'
+  if (diff === 1) return 'Yesterday'
+  return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
+}
+
+export default function ActivityScreen() {
+  const { activity, now, undo, correct } = useFridge()
+  const { width } = useWindowDimensions()
+  const [filter, setFilter] = useState<Filter>('all')
+  const [fixing, setFixing] = useState<ActivityEntry | null>(null)
+
+  const kinds = FILTERS.find(f => f.key === filter)!.kinds
+  const entries = kinds ? activity.filter(a => kinds.includes(a.kind)) : activity
+  const sections: { title: string; data: ActivityEntry[] }[] = []
+  for (const e of entries) {
+    const title = dayLabel(e.at, now)
+    if (sections.at(-1)?.title !== title) sections.push({ title, data: [] })
+    sections.at(-1)!.data.push(e)
   }
 
   return (
-    <View style={styles.container}>
-      {(message || error) && <Text style={styles.error}>{message || error}</Text>}
-      <FlatList
-        data={events}
+    <View className="flex-1 bg-paper">
+      <SectionList
+        sections={sections}
         keyExtractor={e => e.id}
-        contentContainerStyle={{ paddingBottom: 24 }}
-        ListEmptyComponent={<Text style={styles.empty}>{loading ? 'Loading…' : 'Nothing logged yet.'}</Text>}
-        renderItem={({ item }) => <EventRow ev={item} onUndo={() => undo(item)} onFix={() => setFixing(item)} />}
+        stickySectionHeadersEnabled={false}
+        contentContainerStyle={{ padding: width < 600 ? 14 : 24, paddingBottom: 48, width: '100%', maxWidth: 820, alignSelf: 'center' }}
+        ListHeaderComponent={
+          <View className="mb-2 gap-3">
+            <Text className="text-[28px] font-extrabold tracking-tight text-ink">Activity</Text>
+            <View className="flex-row flex-wrap gap-1.5">
+              {FILTERS.map(f => (
+                <Pressable
+                  key={f.key}
+                  onPress={() => setFilter(f.key)}
+                  className={`rounded-full border px-3 py-1.5 ${filter === f.key ? 'border-ink bg-ink' : 'border-line bg-white active:bg-frost'}`}
+                >
+                  <Text className={`text-[13px] font-semibold ${filter === f.key ? 'text-white' : 'text-ink'}`}>{f.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        }
+        renderSectionHeader={({ section }) => (
+          <View className="mb-1 mt-5 flex-row items-baseline gap-2">
+            <Text className="text-[15px] font-bold text-ink">{section.title}</Text>
+            <Text className="text-xs text-mute">{section.data.length} event{section.data.length === 1 ? '' : 's'}</Text>
+          </View>
+        )}
+        renderItem={({ item, index, section }) => (
+          <TimelineRow
+            entry={item}
+            first={index === 0}
+            last={index === section.data.length - 1}
+            onUndo={() => undo(item)}
+            onFix={() => setFixing(item)}
+          />
+        )}
+        ListEmptyComponent={<Text className="mt-10 text-center text-mute">Nothing logged yet.</Text>}
       />
       <FixModal
-        ev={fixing}
+        entry={fixing}
         onClose={() => setFixing(null)}
         onSave={async (name, action) => {
-          if (!fixing) return
-          const { error } = await correctEvent(fixing.id, name, action)
-          setMessage(error)
+          if (fixing) await correct(fixing, name, action)
           setFixing(null)
         }}
       />
@@ -43,49 +104,66 @@ export default function ActivityScreen() {
   )
 }
 
-function timeAgo(iso: string) {
-  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins} min ago`
-  const hrs = Math.round(mins / 60)
-  if (hrs < 24) return `${hrs} h ago`
-  return new Date(iso).toLocaleDateString()
-}
+function TimelineRow({ entry, first, last, onUndo, onFix }: {
+  entry: ActivityEntry
+  first: boolean
+  last: boolean
+  onUndo: () => void
+  onFix: () => void
+}) {
+  const k = KIND[entry.kind]
+  const time = new Date(entry.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  const canEdit = !entry.undone && entry.eventId
 
-function EventRow({ ev, onUndo, onFix }: { ev: FridgeEvent; onUndo: () => void; onFix: () => void }) {
-  const isIn = ev.action === 'in'
-  const undone = ev.status === 'undone'
   return (
-    <View style={[styles.row, undone && { opacity: 0.45 }]}>
-      <Ionicons
-        name={isIn ? 'arrow-down-circle' : 'arrow-up-circle'}
-        size={28}
-        color={isIn ? colors.primary : colors.warning}
-      />
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.name, undone && { textDecorationLine: 'line-through' }]}>
-          {isIn ? 'Added' : 'Took out'} {ev.item_name}
-          {ev.quantity > 1 ? ` ×${ev.quantity}` : ''}
-        </Text>
-        <Text style={styles.meta}>
-          {timeAgo(ev.created_at)} · {ev.source}
-          {ev.confidence != null ? ` · ${Math.round(ev.confidence * 100)}% sure` : ''}
-          {!ev.matched ? ' · wasn’t in inventory' : ''}
-          {ev.raw_label && ev.raw_label.toLowerCase() !== ev.item_name ? ` · AI said “${ev.raw_label}”` : ''}
-        </Text>
-      </View>
-      {!undone && (
-        <View style={styles.actions}>
-          <TouchableOpacity onPress={onFix} style={styles.chip}><Text style={styles.chipText}>Fix</Text></TouchableOpacity>
-          <TouchableOpacity onPress={onUndo} style={styles.chip}><Text style={styles.chipText}>Undo</Text></TouchableOpacity>
+    <FadeIn from={4}>
+      <View className="flex-row gap-3">
+        {/* Rail + node */}
+        <View className="w-9 items-center">
+          <View className={`w-0.5 flex-1 ${first ? 'bg-transparent' : 'bg-line'}`} style={{ maxHeight: 14 }} />
+          <View style={{ backgroundColor: k.bg }} className="h-9 w-9 items-center justify-center rounded-full">
+            <MaterialCommunityIcons name={k.icon} size={17} color={k.color} />
+          </View>
+          <View className={`w-0.5 flex-1 ${last ? 'bg-transparent' : 'bg-line'}`} />
         </View>
-      )}
-    </View>
+
+        <View className={`my-1.5 flex-1 flex-row items-center gap-3 rounded-2xl border border-line bg-white px-3 py-2.5 ${entry.undone ? 'opacity-45' : ''}`}>
+          <CategoryIcon category={entry.category} size={34} />
+          <View className="flex-1">
+            <Text className={`text-[15px] text-ink ${entry.undone ? 'line-through' : ''}`}>
+              <Text style={{ color: k.color }} className="font-semibold">{k.verb} </Text>
+              <Text className="font-semibold">{displayName(entry.itemName)}</Text>
+              {entry.quantity > 1 ? ` ×${entry.quantity}` : ''}
+            </Text>
+            <Text className="mt-0.5 text-xs text-mute">
+              {time} · {entry.via === 'system' ? 'automatic' : entry.via}
+              {entry.source ? ` · ${entry.source}` : ''}
+              {entry.confidence != null ? ` · ${Math.round(entry.confidence * 100)}% sure` : ''}
+              {entry.rawLabel ? ` · AI said “${entry.rawLabel}”` : ''}
+            </Text>
+          </View>
+          {canEdit && (
+            <View className="flex-row gap-1.5">
+              {(entry.kind === 'added' || entry.kind === 'removed') && <Chip label="Fix" onPress={onFix} />}
+              <Chip label="Undo" onPress={onUndo} />
+            </View>
+          )}
+        </View>
+      </View>
+    </FadeIn>
   )
 }
 
-function FixModal({ ev, onClose, onSave }: {
-  ev: FridgeEvent | null
+function Chip({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} className="rounded-full border border-line px-3 py-1 active:bg-frost">
+      <Text className="text-[13px] font-medium text-ink">{label}</Text>
+    </Pressable>
+  )
+}
+
+function FixModal({ entry, onClose, onSave }: {
+  entry: ActivityEntry | null
   onClose: () => void
   onSave: (name: string, action: 'in' | 'out') => void
 }) {
@@ -94,55 +172,35 @@ function FixModal({ ev, onClose, onSave }: {
 
   return (
     <Modal
-      visible={!!ev}
+      visible={!!entry}
       transparent
       animationType="fade"
       onRequestClose={onClose}
-      onShow={() => { setName(ev?.item_name ?? ''); setAction(ev?.action ?? 'in') }}
+      onShow={() => { setName(entry?.itemName ?? ''); setAction(entry?.kind === 'removed' ? 'out' : 'in') }}
     >
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <Text style={styles.sheetTitle}>Fix this entry</Text>
-          <Text style={styles.label}>What was it?</Text>
-          <TextInput style={styles.input} value={name} onChangeText={setName} autoFocus />
-          <Text style={styles.label}>Going</Text>
-          <View style={styles.toggle}>
-            {(['in', 'out'] as const).map(a => (
-              <TouchableOpacity key={a} onPress={() => setAction(a)} style={[styles.toggleBtn, action === a && styles.toggleOn]}>
-                <Text style={[styles.toggleText, action === a && { color: '#fff' }]}>{a === 'in' ? 'Into fridge' : 'Out of fridge'}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={styles.sheetButtons}>
-            <TouchableOpacity onPress={onClose} style={[styles.button, styles.cancel]}><Text style={{ color: colors.text }}>Cancel</Text></TouchableOpacity>
-            <TouchableOpacity onPress={() => name.trim() && onSave(name.trim(), action)} style={styles.button}><Text style={{ color: '#fff', fontWeight: '600' }}>Save</Text></TouchableOpacity>
+      <View className="flex-1 items-center justify-center bg-black/35 p-6">
+        <View className="w-full max-w-[420px] rounded-3xl bg-white p-5">
+          <Text className="mb-3 text-lg font-bold text-ink">Fix this entry</Text>
+          <Text className="mb-1.5 mt-2 text-[13px] font-semibold text-mute">What was it?</Text>
+          <TextInput className="rounded-xl border border-line bg-paper p-3 text-[15px] text-ink" value={name} onChangeText={setName} autoFocus />
+          {!USE_MOCK_DATA && (
+            <>
+              <Text className="mb-1.5 mt-3 text-[13px] font-semibold text-mute">Going</Text>
+              <View className="flex-row gap-2">
+                {(['in', 'out'] as const).map(a => (
+                  <Pressable key={a} onPress={() => setAction(a)} className={`flex-1 items-center rounded-xl border p-2.5 ${action === a ? 'border-fresh-600 bg-fresh-600' : 'border-line'}`}>
+                    <Text className={`font-medium ${action === a ? 'text-white' : 'text-ink'}`}>{a === 'in' ? 'Into fridge' : 'Out of fridge'}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          )}
+          <View className="mt-5 flex-row gap-2.5">
+            <Pressable onPress={onClose} className="flex-1 items-center rounded-xl bg-frost p-3"><Text className="text-ink">Cancel</Text></Pressable>
+            <Pressable onPress={() => name.trim() && onSave(name.trim(), action)} className="flex-1 items-center rounded-xl bg-ink p-3"><Text className="font-semibold text-white">Save</Text></Pressable>
           </View>
         </View>
       </View>
     </Modal>
   )
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: 16 },
-  error: { color: colors.danger, marginBottom: 8 },
-  empty: { textAlign: 'center', color: colors.muted, marginTop: 40 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.surface, borderRadius: 12, padding: 12, marginBottom: 8 },
-  name: { fontSize: 15, fontWeight: '600', color: colors.text },
-  meta: { fontSize: 12, color: colors.muted, marginTop: 2 },
-  actions: { flexDirection: 'row', gap: 6 },
-  chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 5 },
-  chipText: { fontSize: 13, color: colors.text, fontWeight: '500' },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', padding: 24 },
-  sheet: { backgroundColor: colors.surface, borderRadius: 16, padding: 20 },
-  sheetTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 12 },
-  label: { fontSize: 13, fontWeight: '600', color: colors.muted, marginBottom: 6, marginTop: 8 },
-  input: { backgroundColor: colors.background, borderRadius: 10, padding: 12, fontSize: 15, borderWidth: 1, borderColor: colors.border, color: colors.text },
-  toggle: { flexDirection: 'row', gap: 8 },
-  toggleBtn: { flex: 1, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
-  toggleOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  toggleText: { color: colors.text, fontWeight: '500' },
-  sheetButtons: { flexDirection: 'row', gap: 10, marginTop: 18 },
-  button: { flex: 1, backgroundColor: colors.primary, borderRadius: 10, padding: 13, alignItems: 'center' },
-  cancel: { backgroundColor: colors.background },
-})
