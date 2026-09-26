@@ -127,22 +127,28 @@ function ScoreCard({ history, now, onPress }: { history: ReturnType<typeof useFr
     return { rate: totals(recent).rate, streak: wasteFreeStreak(history, now) }
   }, [history, now])
   const pct = rate === null ? null : Math.round(rate * 100)
+  const { c } = useTheme()
 
+  // A soft highlight tile (theme tint, not a solid dark block), so it sits lightly in the sidebar.
   return (
-    <Pressable onPress={onPress} className="mx-4 overflow-hidden rounded-3xl border border-[#23402f] bg-[#123526] p-4 active:opacity-90">
-      <MaterialCommunityIcons name="leaf" size={110} color="#1b4a35" style={{ position: 'absolute', right: -22, bottom: -26, transform: [{ rotate: '-20deg' }] }} />
-      <Text className="text-[11px] font-bold uppercase tracking-[2px] text-[#8fc9a8]">This month</Text>
+    <Pressable
+      onPress={onPress}
+      className="mx-4 overflow-hidden rounded-3xl border border-fresh-100 p-4 active:opacity-80"
+      style={{ backgroundColor: c.primaryLight }}
+    >
+      <MaterialCommunityIcons name="leaf" size={110} color={c.fresh} style={{ position: 'absolute', right: -22, bottom: -26, opacity: 0.12, transform: [{ rotate: '-20deg' }] }} />
+      <Text className="text-[11px] font-bold uppercase tracking-[2px]" style={{ color: c.primary }}>This month</Text>
       <View className="mt-1 flex-row items-end gap-2">
-        <Text className="font-display-bold text-[36px] leading-[40px] text-white">{pct === null ? '—' : `${pct}%`}</Text>
-        <Text className="mb-1.5 text-[12px] text-[#cfe7d9]">waste{'\n'}avoided</Text>
+        <Text className="font-display-bold text-[36px] leading-[40px]" style={{ color: c.text }}>{pct === null ? '—' : `${pct}%`}</Text>
+        <Text className="mb-1.5 text-[12px]" style={{ color: c.textSoft }}>waste{'\n'}avoided</Text>
       </View>
-      <View className="mt-3 h-2 flex-row overflow-hidden rounded-full bg-[#1d4a37]">
-        {pct !== null && <View style={{ width: `${pct}%`, backgroundColor: '#5fd497' }} />}
+      <View className="mt-3 h-2 flex-row overflow-hidden rounded-full" style={{ backgroundColor: c.glass }}>
+        {pct !== null && <View style={{ width: `${pct}%`, backgroundColor: c.fresh }} />}
       </View>
       <View className="mt-3 flex-row items-center gap-1.5">
-        <MaterialCommunityIcons name="fire" size={15} color="#f6c177" />
-        <Text className="text-[12px] text-[#cfe7d9]">
-          {streak === null ? 'Nothing wasted yet' : <><Text className="font-bold text-white">{streak} day{streak === 1 ? '' : 's'}</Text> waste-free</>}
+        <MaterialCommunityIcons name="fire" size={15} color={c.soon} />
+        <Text className="text-[12px]" style={{ color: c.textSoft }}>
+          {streak === null ? 'Nothing wasted yet' : <><Text className="font-bold" style={{ color: c.text }}>{streak} day{streak === 1 ? '' : 's'}</Text> waste-free</>}
         </Text>
       </View>
     </Pressable>
