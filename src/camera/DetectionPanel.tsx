@@ -11,7 +11,7 @@ export type DetectionEntry = {
   id: number
   at: number
   frames: string[]
-  status: 'sending' | 'captured' | 'skipped' | DetectResult['kind']
+  status: 'sending' | 'captured' | 'skipped' | 'barcode' | DetectResult['kind']
   events?: FridgeEvent[]
   message?: string
 }
@@ -74,6 +74,7 @@ function EntryRow({ entry }: { entry: DetectionEntry }) {
     sending: { icon: 'cloud-upload-outline', text: 'Asking the AI…', color: colors.muted },
     captured: { icon: 'images-outline', text: 'Captured (Send to AI is off)', color: colors.muted },
     skipped: { icon: 'pause-circle-outline', text: 'Skipped: still waiting on the previous answer', color: colors.warning },
+    barcode: { icon: 'barcode-outline', text: 'Handled by the barcode scanner', color: colors.primary },
     nothing: { icon: 'eye-off-outline', text: 'Nothing clearly moved in or out', color: colors.muted },
     'not-deployed': { icon: 'construct-outline', text: 'Can’t reach the AI function: it’s probably not deployed yet (supabase/functions/detect-items)', color: colors.warning },
     error: { icon: 'alert-circle-outline', text: entry.message ?? 'Something went wrong', color: colors.danger },

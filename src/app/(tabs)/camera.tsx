@@ -10,6 +10,7 @@ import { DEFAULT_MOTION_SETTINGS, type MotionEvent } from '@/camera/motion'
 import { useFrameRecorder } from '@/camera/useFrameRecorder'
 import { detectItems } from '@/camera/detect'
 import { DetectionPanel, type DetectionEntry } from '@/camera/DetectionPanel'
+import { BarcodePanel } from '@/camera/BarcodePanel'
 
 // OWNER: camera team. The fridge camera (runs in the browser; see src/camera/).
 //
@@ -19,6 +20,8 @@ import { DetectionPanel, type DetectionEntry } from '@/camera/DetectionPanel'
 //   4. detectItems          sends 4 of them to the detect-items Edge Function, which asks
 //                           the vision AI and logs the result with record_event
 //   5. DetectionPanel       "Added milk" with Undo / Fix; Fridge + Activity update live
+//   +  BarcodePanel         packaged items: barcode → Open Food Facts → confirm. A movement
+//                           handled by a barcode is not also sent to the AI.
 //
 // The "Simulate a detection" buttons still fake a detection for testing without a camera.
 
@@ -49,6 +52,7 @@ export default function CameraScreen() {
   const [entries, setEntries] = useState<DetectionEntry[]>([])
   const busy = useRef(false) // one AI request at a time
   const nextId = useRef(1)
+  const lastBarcodeAt = useRef(0)
 
   const addEntry = (e: DetectionEntry) => setEntries(list => [e, ...list].slice(0, 4))
   const updateEntry = (id: number, patch: Partial<DetectionEntry>) =>
@@ -60,6 +64,8 @@ export default function CameraScreen() {
     if (frames.length === 0) return
 
     const entry: DetectionEntry = { id: nextId.current++, at: Date.now(), frames, status: 'sending' }
+    // The barcode scanner already logged this item → don't pay the AI to do it again
+    if (Date.now() - lastBarcodeAt.current < 10_000) return addEntry({ ...entry, status: 'barcode' })
     if (!sendToAI || !household) return addEntry({ ...entry, status: 'captured' })
     if (busy.current) return addEntry({ ...entry, status: 'skipped' })
 
@@ -92,6 +98,9 @@ export default function CameraScreen() {
       <View style={[styles.feedBorder, active && styles.feedBorderActive]}>
         <CameraFeed onVideoReady={setVideo} />
       </View>
+      {Platform.OS === 'web' && (
+        <BarcodePanel video={video} householdId={household?.id} onHandled={() => (lastBarcodeAt.current = Date.now())} />
+      )}
       {Platform.OS === 'web' && (
         <MotionPanel
           level={level}
