@@ -1,9 +1,12 @@
-import { useState } from 'react'
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useMemo, useState } from 'react'
+import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { useHousehold } from '@/household'
 import { recordEvent } from '@/data/fridge'
 import { colors } from '@/ui/theme'
 import CameraFeed from '@/camera/CameraFeed'
+import { useMotionDetector } from '@/camera/useMotionDetector'
+import { MotionPanel, SENSITIVITY_THRESHOLDS, type Sensitivity } from '@/camera/MotionPanel'
+import { DEFAULT_MOTION_SETTINGS, type MotionEvent } from '@/camera/motion'
 
 // OWNER: camera team.
 //
@@ -29,6 +32,18 @@ export default function CameraScreen() {
   const { household } = useHousehold()
   const [log, setLog] = useState<string[]>([])
 
+  // Step 2: motion detection on the live <video>
+  const [video, setVideo] = useState<HTMLVideoElement | null>(null)
+  const [sensitivity, setSensitivity] = useState<Sensitivity>('medium')
+  const [motionEvents, setMotionEvents] = useState<MotionEvent[]>([])
+  const settings = useMemo(
+    () => ({ ...DEFAULT_MOTION_SETTINGS, motionThreshold: SENSITIVITY_THRESHOLDS[sensitivity] }),
+    [sensitivity]
+  )
+  const { level, active } = useMotionDetector(video, settings, {
+    onMotionEnd: e => setMotionEvents(list => [e, ...list].slice(0, 5)),
+  })
+
   async function simulate(s: (typeof SAMPLES)[number]) {
     if (!household) return
     const { data, error } = await recordEvent({ householdId: household.id, ...s, source: 'camera' })
@@ -37,7 +52,20 @@ export default function CameraScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
-      <CameraFeed />
+      {/* Green border while something is moving */}
+      <View style={[styles.feedBorder, active && styles.feedBorderActive]}>
+        <CameraFeed onVideoReady={setVideo} />
+      </View>
+      {Platform.OS === 'web' && (
+        <MotionPanel
+          level={level}
+          active={active}
+          threshold={settings.motionThreshold}
+          sensitivity={sensitivity}
+          onSensitivityChange={setSensitivity}
+          events={motionEvents}
+        />
+      )}
       <View style={{ height: 20 }} />
 
       <Text style={styles.heading}>Simulate a detection</Text>
@@ -56,6 +84,8 @@ export default function CameraScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  feedBorder: { borderRadius: 19, borderWidth: 3, borderColor: 'transparent' },
+  feedBorderActive: { borderColor: colors.primary },
   heading: { fontSize: 17, fontWeight: '700', color: colors.text },
   sub: { fontSize: 13, color: colors.muted, marginTop: 4, marginBottom: 12 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
