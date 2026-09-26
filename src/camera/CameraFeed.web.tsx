@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { colors } from '@/ui/theme'
 import type { CameraFeedProps } from './types'
+import { GUIDE_BOX } from './barcode'
 
 /**
  * Web camera preview (Metro picks this file on web; CameraFeed.tsx is the phone fallback).
@@ -34,7 +35,7 @@ function loadSavedCamera(): SavedCamera | null {
 function saveCamera(cam: SavedCamera | null) {
   try { cam ? localStorage.setItem(STORAGE_KEY, JSON.stringify(cam)) : localStorage.removeItem(STORAGE_KEY) } catch {}
 }
-export default function CameraFeed({ onVideoReady, facing = 'environment' }: CameraFeedProps) {
+export default function CameraFeed({ onVideoReady, facing = 'environment', showBarcodeGuide = false }: CameraFeedProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [status, setStatus] = useState<'starting' | 'live' | 'error'>('starting')
   const [error, setError] = useState<string | null>(null)
@@ -84,7 +85,9 @@ export default function CameraFeed({ onVideoReady, facing = 'environment' }: Cam
       }
 
       try {
-        const size = { width: { ideal: 1280 }, height: { ideal: 720 } }
+        // 1080p when the webcam supports it: barcodes need the detail (motion detection
+        // and AI frames shrink it anyway, so there's no cost there)
+        const size = { width: { ideal: 1920 }, height: { ideal: 1080 } }
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             // A chosen camera wins; otherwise "environment" = back camera on phones, default webcam on laptops
@@ -153,6 +156,12 @@ export default function CameraFeed({ onVideoReady, facing = 'environment' }: Cam
         playsInline
         style={{ width: '100%', height: '100%', objectFit: 'cover', display: status === 'live' ? 'block' : 'none' }}
       />
+      {status === 'live' && showBarcodeGuide && (
+        <View pointerEvents="none" style={styles.guideWrap}>
+          <View style={styles.guide} />
+          <Text style={styles.guideText}>Barcode here · fill most of the box</Text>
+        </View>
+      )}
       {status === 'live' && cameras.length > 1 && (
         <View style={styles.pickerWrap}>
           <select
@@ -196,6 +205,16 @@ const pickerStyle = {
 } as const
 
 const styles = StyleSheet.create({
+  guideWrap: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
+  guide: {
+    width: `${GUIDE_BOX.width * 100}%`,
+    height: `${GUIDE_BOX.height * 100}%`,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.85)',
+    borderRadius: 12,
+    borderStyle: 'dashed',
+  },
+  guideText: { position: 'absolute', bottom: '19%', color: '#fff', fontSize: 12, fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 3 },
   pickerWrap: { position: 'absolute', left: 10, bottom: 10, right: 10, alignItems: 'flex-start' },
   frame: { width: '100%', aspectRatio: 4 / 3, backgroundColor: '#1c2a24', borderRadius: 16, overflow: 'hidden' },
   overlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', padding: 24 },

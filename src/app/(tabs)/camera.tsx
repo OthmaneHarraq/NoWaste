@@ -53,6 +53,7 @@ export default function CameraScreen() {
   const busy = useRef(false) // one AI request at a time
   const nextId = useRef(1)
   const lastBarcodeAt = useRef(0)
+  const [barcodeOn, setBarcodeOn] = useState(true)
 
   const addEntry = (e: DetectionEntry) => setEntries(list => [e, ...list].slice(0, 4))
   const updateEntry = (id: number, patch: Partial<DetectionEntry>) =>
@@ -96,10 +97,16 @@ export default function CameraScreen() {
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
       {/* Green border while something is moving */}
       <View style={[styles.feedBorder, active && styles.feedBorderActive]}>
-        <CameraFeed onVideoReady={setVideo} />
+        <CameraFeed onVideoReady={setVideo} showBarcodeGuide={barcodeOn} />
       </View>
       {Platform.OS === 'web' && (
-        <BarcodePanel video={video} householdId={household?.id} onHandled={() => (lastBarcodeAt.current = Date.now())} />
+        <BarcodePanel
+          video={video}
+          householdId={household?.id}
+          enabled={barcodeOn}
+          onEnabledChange={setBarcodeOn}
+          onHandled={() => (lastBarcodeAt.current = Date.now())}
+        />
       )}
       {Platform.OS === 'web' && (
         <MotionPanel

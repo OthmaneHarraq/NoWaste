@@ -18,6 +18,8 @@ type Pending =
 type Props = {
   video: HTMLVideoElement | null
   householdId: string | undefined
+  enabled: boolean
+  onEnabledChange: (on: boolean) => void
   /** Tells the Camera tab a barcode handled this movement, so it doesn't also ask the AI. */
   onHandled?: () => void
 }
@@ -26,8 +28,7 @@ type Props = {
  * Barcode path: scan → look up → confirm (auto after 5s) → record_event.
  * Direction guess until motion direction exists: already in the fridge → "took out", else "put in".
  */
-export function BarcodePanel({ video, householdId, onHandled }: Props) {
-  const [enabled, setEnabled] = useState(true)
+export function BarcodePanel({ video, householdId, enabled, onEnabledChange: setEnabled, onHandled }: Props) {
   const [pending, setPending] = useState<Pending | null>(null)
   const [recent, setRecent] = useState<FridgeEvent[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -98,7 +99,7 @@ export function BarcodePanel({ video, householdId, onHandled }: Props) {
           <Text style={styles.title}>Barcode scanning</Text>
           <Text style={styles.sub}>
             {enabled
-              ? `Hold a package up with its barcode facing the camera${engine ? ` · ${engine === 'native' ? 'built-in' : 'ZXing'} reader` : ''}`
+              ? `Hold the barcode flat in the dashed box, filling most of it${engine ? ` · ${engine === 'native' ? 'built-in' : 'ZXing'} reader` : ''}`
               : 'Off'}
           </Text>
         </View>
