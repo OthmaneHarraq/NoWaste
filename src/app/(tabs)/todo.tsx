@@ -1,4 +1,4 @@
-import { Platform, ScrollView, Text, View, useWindowDimensions } from 'react-native'
+import { ScrollView, Text, View, useWindowDimensions } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useFridge } from '@/fridge/FridgeProvider'
 import { freshnessOf } from '@/fridge/freshness'
@@ -9,6 +9,7 @@ import { ShoppingCard } from '@/fridge/components/ShoppingCard'
 import { FreshnessChip } from '@/fridge/components/visuals'
 import { FadeIn } from '@/ui/motion'
 import { NAV } from '@/ui/Sidebar'
+import { PAGE_BACKGROUND } from '@/ui/background'
 
 // OWNER: phone app team. Everything that needs a decision: what to eat or bin now, recipes
 // that use up what's expiring, and what to buy differently next time.
@@ -21,7 +22,7 @@ export default function TodoScreen() {
   const soon = actionNeeded.length - expired
 
   return (
-    <ScrollView className={`flex-1 bg-paper ${DOTS}`} contentContainerStyle={{ padding: width < 600 ? 14 : 24, paddingBottom: 48 }}>
+    <ScrollView className={`flex-1 bg-paper ${PAGE_BACKGROUND}`} contentContainerStyle={{ padding: width < 600 ? 14 : 24, paddingBottom: 48 }}>
       <View className="mb-4">
         <View className="flex-row items-center gap-3">
           {/* Same icon and tile as the active To do entry in the sidebar. */}
@@ -39,24 +40,19 @@ export default function TodoScreen() {
       <View className="mb-5 h-px bg-line" />
 
       <View className={twoColumn ? 'flex-row items-start gap-5' : 'gap-5'}>
-        <View style={twoColumn ? { flex: 1.1 } : undefined}>
+        {/* Insights sit under Action needed, so stacked on a phone they come before recipes. */}
+        <View className="gap-5" style={twoColumn ? { flex: 1.1 } : undefined}>
           <FadeIn>
             <ActionNeededPanel />
           </FadeIn>
+          <InsightsCard delay={120} />
         </View>
         <View className="gap-5" style={twoColumn ? { flex: 1 } : undefined}>
           <RecipesCard delay={80} />
           <ShoppingCard delay={160} />
         </View>
       </View>
-
-      {/* Full width under both columns: it's about past waste, not today's decisions. */}
-      <View className="mt-5">
-        <InsightsCard delay={240} />
-      </View>
     </ScrollView>
   )
 }
 
-// Web-only dot texture behind the page (matches Impact and Activity).
-const DOTS = Platform.OS === 'web' ? 'bg-[radial-gradient(#cfdcd3_1.2px,transparent_1.2px)] bg-[length:20px_20px] dark:bg-[radial-gradient(#1f2a25_1.2px,transparent_1.2px)]' : ''

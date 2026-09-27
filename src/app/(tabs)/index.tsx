@@ -10,6 +10,7 @@ import { FridgeView } from '@/fridge/components/FridgeView'
 import { LiveFeed } from '@/fridge/components/LiveFeed'
 import { useFreshHex, useIce } from '@/fridge/components/visuals'
 import { useTheme } from '@/ui/ThemeProvider'
+import { PAGE_BACKGROUND } from '@/ui/background'
 
 // OWNER: phone app team. The fridge dashboard: what's inside, what to use first, and what
 // the camera just saw. Updates live (Supabase Realtime) — no refresh needed.
@@ -20,8 +21,6 @@ import { useTheme } from '@/ui/ThemeProvider'
 const WEB = Platform.OS === 'web'
 type ViewMode = 'normal' | 'fridge'
 const VIEW_KEY = 'nowaste:view'
-// Web-only dot texture behind the page (same as Activity and Impact).
-const DOTS = WEB ? 'bg-[radial-gradient(#cfdcd3_1.2px,transparent_1.2px)] bg-[length:20px_20px] dark:bg-[radial-gradient(#1f2a25_1.2px,transparent_1.2px)]' : ''
 
 function savedView(): ViewMode {
   try {
@@ -121,7 +120,7 @@ export default function FridgeScreen() {
   // Web, wide: a fixed page. Header + filters stay put; the fridge and the side panel scroll.
   if (WEB && twoColumn) {
     return (
-      <View className={`flex-1 flex-row gap-6 bg-paper ${DOTS}`} style={{ padding: 24, paddingBottom: 16 }}>
+      <View className={`flex-1 flex-row gap-6 bg-paper ${PAGE_BACKGROUND}`} style={{ padding: 24, paddingBottom: 16 }}>
         <View className="flex-1 gap-4" style={{ minHeight: 0 }}>
           {header}
           {filters}
@@ -138,7 +137,7 @@ export default function FridgeScreen() {
   // Web, narrow (tablet): the page scrolls, but the fridge is a fixed-height window of its own.
   // Phones: one scrolling page, no nested scrolling (it fights touch scrolling).
   return (
-    <ScrollView className={`flex-1 bg-paper ${DOTS}`} contentContainerStyle={{ padding: phone ? 14 : 24, paddingBottom: 48 }}>
+    <ScrollView className={`flex-1 bg-paper ${PAGE_BACKGROUND}`} contentContainerStyle={{ padding: phone ? 14 : 24, paddingBottom: 48 }}>
       <View className="gap-5">
         <View className="gap-4">
           {header}

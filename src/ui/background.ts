@@ -1,0 +1,26 @@
+import { Platform } from 'react-native'
+
+// The page texture behind the Fridge, To do, Activity and Impact tabs: a faint tiled pattern of
+// leaf outlines (the brand mark), an apple and a sprout. One 260px tile with the marks staggered
+// at varied angles, so the repeat isn't obvious. Web-only CSS, like the dot grid it replaces;
+// native keeps the flat bg-paper colour.
+//
+// Tailwind only generates classes it finds written out in full, so the SVG is inlined twice,
+// percent-encoded, once per theme. To change it, edit the tile below and re-encode it
+// (encodeURIComponent), swapping the stroke colour: light #d4ded7, dark #202c26.
+//
+//   <svg xmlns='http://www.w3.org/2000/svg' width='260' height='260' fill='none' stroke='COLOUR'
+//        stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'>
+//     <g transform='translate(38 34) rotate(-32) scale(1.0)'>LEAF</g>
+//     <g transform='translate(176 88) rotate(14) scale(0.85)'>APPLE</g>
+//     <g transform='translate(96 168) rotate(38) scale(0.75)'>LEAF</g>
+//     <g transform='translate(226 212) rotate(-8) scale(0.8)'>SPROUT</g>
+//     <g transform='translate(224 24) rotate(-68) scale(0.6)'>LEAF</g>
+//     <g transform='translate(22 118) rotate(76) scale(0.55)'>LEAF</g>
+//   </svg>
+//   LEAF   = <path d='M0 -13C8 -7 8 7 0 13C-8 7 -8 -7 0 -13Z'/><path d='M0 -9V11'/>
+//   APPLE  = <path d='M0 -5C-3 -9 -11 -8 -11 1C-11 8 -5 12 0 9C5 12 11 8 11 1C11 -8 3 -9 0 -5Z'/><path d='M0 -5C0 -9 2 -12 5 -13'/>
+//   SPROUT = <path d='M0 10V-2'/><path d='M0 -2C-2 -8 -8 -9 -10 -8C-9 -3 -4 -1 0 -2Z'/><path d='M0 1C2 -5 8 -6 10 -5C9 0 4 2 0 1Z'/>
+export const PAGE_BACKGROUND = Platform.OS === 'web'
+  ? 'bg-[length:260px_260px] bg-[url(data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27260%27%20height%3D%27260%27%20fill%3D%27none%27%20stroke%3D%27%23d4ded7%27%20stroke-width%3D%271.4%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cg%20transform%3D%27translate%2838%2034%29%20rotate%28-32%29%20scale%281.0%29%27%3E%3Cpath%20d%3D%27M0%20-13C8%20-7%208%207%200%2013C-8%207%20-8%20-7%200%20-13Z%27%2F%3E%3Cpath%20d%3D%27M0%20-9V11%27%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%27translate%28176%2088%29%20rotate%2814%29%20scale%280.85%29%27%3E%3Cpath%20d%3D%27M0%20-5C-3%20-9%20-11%20-8%20-11%201C-11%208%20-5%2012%200%209C5%2012%2011%208%2011%201C11%20-8%203%20-9%200%20-5Z%27%2F%3E%3Cpath%20d%3D%27M0%20-5C0%20-9%202%20-12%205%20-13%27%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%27translate%2896%20168%29%20rotate%2838%29%20scale%280.75%29%27%3E%3Cpath%20d%3D%27M0%20-13C8%20-7%208%207%200%2013C-8%207%20-8%20-7%200%20-13Z%27%2F%3E%3Cpath%20d%3D%27M0%20-9V11%27%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%27translate%28226%20212%29%20rotate%28-8%29%20scale%280.8%29%27%3E%3Cpath%20d%3D%27M0%2010V-2%27%2F%3E%3Cpath%20d%3D%27M0%20-2C-2%20-8%20-8%20-9%20-10%20-8C-9%20-3%20-4%20-1%200%20-2Z%27%2F%3E%3Cpath%20d%3D%27M0%201C2%20-5%208%20-6%2010%20-5C9%200%204%202%200%201Z%27%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%27translate%28224%2024%29%20rotate%28-68%29%20scale%280.6%29%27%3E%3Cpath%20d%3D%27M0%20-13C8%20-7%208%207%200%2013C-8%207%20-8%20-7%200%20-13Z%27%2F%3E%3Cpath%20d%3D%27M0%20-9V11%27%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%27translate%2822%20118%29%20rotate%2876%29%20scale%280.55%29%27%3E%3Cpath%20d%3D%27M0%20-13C8%20-7%208%207%200%2013C-8%207%20-8%20-7%200%20-13Z%27%2F%3E%3Cpath%20d%3D%27M0%20-9V11%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E)] dark:bg-[url(data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27260%27%20height%3D%27260%27%20fill%3D%27none%27%20stroke%3D%27%23202c26%27%20stroke-width%3D%271.4%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cg%20transform%3D%27translate%2838%2034%29%20rotate%28-32%29%20scale%281.0%29%27%3E%3Cpath%20d%3D%27M0%20-13C8%20-7%208%207%200%2013C-8%207%20-8%20-7%200%20-13Z%27%2F%3E%3Cpath%20d%3D%27M0%20-9V11%27%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%27translate%28176%2088%29%20rotate%2814%29%20scale%280.85%29%27%3E%3Cpath%20d%3D%27M0%20-5C-3%20-9%20-11%20-8%20-11%201C-11%208%20-5%2012%200%209C5%2012%2011%208%2011%201C11%20-8%203%20-9%200%20-5Z%27%2F%3E%3Cpath%20d%3D%27M0%20-5C0%20-9%202%20-12%205%20-13%27%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%27translate%2896%20168%29%20rotate%2838%29%20scale%280.75%29%27%3E%3Cpath%20d%3D%27M0%20-13C8%20-7%208%207%200%2013C-8%207%20-8%20-7%200%20-13Z%27%2F%3E%3Cpath%20d%3D%27M0%20-9V11%27%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%27translate%28226%20212%29%20rotate%28-8%29%20scale%280.8%29%27%3E%3Cpath%20d%3D%27M0%2010V-2%27%2F%3E%3Cpath%20d%3D%27M0%20-2C-2%20-8%20-8%20-9%20-10%20-8C-9%20-3%20-4%20-1%200%20-2Z%27%2F%3E%3Cpath%20d%3D%27M0%201C2%20-5%208%20-6%2010%20-5C9%200%204%202%200%201Z%27%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%27translate%28224%2024%29%20rotate%28-68%29%20scale%280.6%29%27%3E%3Cpath%20d%3D%27M0%20-13C8%20-7%208%207%200%2013C-8%207%20-8%20-7%200%20-13Z%27%2F%3E%3Cpath%20d%3D%27M0%20-9V11%27%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%27translate%2822%20118%29%20rotate%2876%29%20scale%280.55%29%27%3E%3Cpath%20d%3D%27M0%20-13C8%20-7%208%207%200%2013C-8%207%20-8%20-7%200%20-13Z%27%2F%3E%3Cpath%20d%3D%27M0%20-9V11%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E)]'
+  : ''

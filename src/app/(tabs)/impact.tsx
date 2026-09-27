@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
+import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useFridge } from '@/fridge/FridgeProvider'
 import { CATEGORIES, displayName } from '@/fridge/categories'
@@ -12,6 +12,7 @@ import { FootprintTiles } from '@/fridge/components/FootprintTiles'
 import { FadeIn } from '@/ui/motion'
 import { shadow } from '@/ui/theme'
 import { useTheme } from '@/ui/ThemeProvider'
+import { PAGE_BACKGROUND } from '@/ui/background'
 
 // OWNER: phone app team. The "is this working?" page: food saved vs wasted over time.
 export default function ImpactScreen() {
@@ -39,7 +40,7 @@ export default function ImpactScreen() {
   const worst = byCategory[0]
 
   return (
-    <ScrollView className={`flex-1 bg-paper ${DOTS}`} contentContainerStyle={{ padding: width < 600 ? 14 : 24, paddingBottom: 48 }}>
+    <ScrollView className={`flex-1 bg-paper ${PAGE_BACKGROUND}`} contentContainerStyle={{ padding: width < 600 ? 14 : 24, paddingBottom: 48 }}>
       <View className="mb-5">
         <Text className="font-display-bold text-[34px] leading-[40px] text-ink">Your impact</Text>
         <Text className="mt-0.5 text-sm text-ink-soft">Last 30 days of this fridge</Text>
@@ -130,8 +131,6 @@ export default function ImpactScreen() {
   )
 }
 
-// Web-only dot texture behind the page (matches Activity).
-const DOTS = Platform.OS === 'web' ? 'bg-[radial-gradient(#cfdcd3_1.2px,transparent_1.2px)] bg-[length:20px_20px] dark:bg-[radial-gradient(#1f2a25_1.2px,transparent_1.2px)]' : ''
 
 /** Unit chart: every item that left the fridge is one tile, green if eaten, coral if wasted. */
 function Waffle({ items }: { items: FridgeItem[] }) {

@@ -9,6 +9,7 @@ import type { ActivityEntry, ActivityKind, FoodCategory } from '@/fridge/types'
 import { FadeIn } from '@/ui/motion'
 import { shadow } from '@/ui/theme'
 import { useTheme } from '@/ui/ThemeProvider'
+import { PAGE_BACKGROUND } from '@/ui/background'
 
 // OWNER: phone app team. Everything that went in or out, grouped by day, newest first,
 // with one-tap Undo and Fix. Fixing a name teaches the household an alias.
@@ -46,8 +47,6 @@ const FILTERS: { key: Filter; label: string; icon: IconName; kinds: ActivityKind
 ]
 
 const WEB = Platform.OS === 'web'
-// Web-only texture (plain colour elsewhere).
-const DOTS = WEB ? 'bg-[radial-gradient(#cfdcd3_1.2px,transparent_1.2px)] bg-[length:20px_20px] dark:bg-[radial-gradient(#1f2a25_1.2px,transparent_1.2px)]' : ''
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
 
@@ -134,7 +133,7 @@ export default function ActivityScreen() {
   )
 
   return (
-    <View className={`flex-1 bg-paper ${DOTS}`}>
+    <View className={`flex-1 bg-paper ${PAGE_BACKGROUND}`}>
       <ScrollView className="flex-1" contentContainerStyle={{ padding: phone ? 14 : 28, paddingBottom: 56 }}>
         <View style={{ width: '100%', maxWidth: 1240, alignSelf: 'center' }}>
           <Hero today={today} activity={activity} now={now} phone={phone} />
