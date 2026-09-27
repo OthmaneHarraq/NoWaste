@@ -10,17 +10,17 @@
   --font-display-bold: 'Fredoka_700Bold', 'Fredoka', ui-rounded, system-ui, sans-serif;
 
   --color-ink: #17251f;
-  --color-ink-soft: #4c5d55;
-  --color-mute: #8a9a93;
+  --color-ink-soft: #505750;
+  --color-mute: #736f67;
   --color-on-ink: #ffffff;
-  --color-paper: #e9eee8;
-  --color-surface: #ffffff;
-  --color-frost: #e0e8e1;
-  --color-line: #d7e0d9;
+  --color-paper: #ece7de;
+  --color-surface: #fffdf9;
+  --color-frost: #f5f1ea;
+  --color-line: #e0d9cc;
   --color-glass: #cfe2db;
 
-  --color-fresh-50: #eef8f1;
-  --color-fresh-100: #d5eedc;
+  --color-fresh-50: #edf4e8;
+  --color-fresh-100: #d6e8d0;
   --color-fresh-500: #2f9e5b;
   --color-fresh-600: #23804a;
   --color-fresh-700: #1b653b;
@@ -46,24 +46,24 @@
   --color-ice-700: #3f6a8f;
 
   /* Fridge cabinet (Fridge view). */
-  --color-enamel: #fbfcfb;
-  --color-enamel-edge: #dde5e1;
+  --color-enamel: #fdfcf8;
+  --color-enamel-edge: #e1dbcf;
 }
 
 @layer theme {
   :root {
     @variant light {
       --color-ink: #17251f;
-      --color-ink-soft: #4c5d55;
-      --color-mute: #8a9a93;
+      --color-ink-soft: #505750;
+      --color-mute: #736f67;
       --color-on-ink: #ffffff;
-      --color-paper: #e9eee8;
-      --color-surface: #ffffff;
-      --color-frost: #e0e8e1;
-      --color-line: #d7e0d9;
+      --color-paper: #ece7de;
+      --color-surface: #fffdf9;
+      --color-frost: #f5f1ea;
+      --color-line: #e0d9cc;
       --color-glass: #cfe2db;
-      --color-fresh-50: #eef8f1;
-      --color-fresh-100: #d5eedc;
+      --color-fresh-50: #edf4e8;
+      --color-fresh-100: #d6e8d0;
       --color-fresh-500: #2f9e5b;
       --color-fresh-600: #23804a;
       --color-fresh-700: #1b653b;
@@ -83,8 +83,8 @@
       --color-ice-300: #bcd6ea;
       --color-ice-500: #5b8fb9;
       --color-ice-700: #3f6a8f;
-      --color-enamel: #fbfcfb;
-      --color-enamel-edge: #dde5e1;
+      --color-enamel: #fdfcf8;
+      --color-enamel-edge: #e1dbcf;
     }
 
     /* Dark: green-tinted charcoal, not pure black. The *-700 shades are the "strong text"
