@@ -9,7 +9,7 @@ import { useTheme } from './ThemeProvider'
 
 type IconName = keyof typeof MaterialCommunityIcons.glyphMap
 
-const NAV: Record<string, { label: string; icon: IconName; hint: string }> = {
+export const NAV: Record<string, { label: string; icon: IconName; hint: string }> = {
   index:    { label: 'Fridge',   icon: 'fridge-outline',        hint: 'What’s inside' },
   todo:     { label: 'To do',    icon: 'clipboard-check-outline', hint: 'Use up, shop smart' },
   activity: { label: 'Activity', icon: 'timeline-text-outline', hint: 'In, out, used' },

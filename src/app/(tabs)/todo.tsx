@@ -1,11 +1,14 @@
 import { Platform, ScrollView, Text, View, useWindowDimensions } from 'react-native'
+import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useFridge } from '@/fridge/FridgeProvider'
 import { freshnessOf } from '@/fridge/freshness'
 import { ActionNeededPanel } from '@/fridge/components/ActionNeededPanel'
 import { InsightsCard } from '@/fridge/components/InsightsCard'
 import { RecipesCard } from '@/fridge/components/RecipesCard'
 import { ShoppingCard } from '@/fridge/components/ShoppingCard'
+import { FreshnessChip } from '@/fridge/components/visuals'
 import { FadeIn } from '@/ui/motion'
+import { NAV } from '@/ui/Sidebar'
 
 // OWNER: phone app team. Everything that needs a decision: what to eat or bin now, recipes
 // that use up what's expiring, and what to buy differently next time.
@@ -17,16 +20,23 @@ export default function TodoScreen() {
   const expired = actionNeeded.filter(i => freshnessOf(i, now) === 'expired').length
   const soon = actionNeeded.length - expired
 
-  const summary = actionNeeded.length === 0
-    ? 'Nothing needs you right now'
-    : [expired && `${expired} past date`, soon && `${soon} expiring soon`].filter(Boolean).join(' · ')
-
   return (
     <ScrollView className={`flex-1 bg-paper ${DOTS}`} contentContainerStyle={{ padding: width < 600 ? 14 : 24, paddingBottom: 48 }}>
-      <View className="mb-5">
-        <Text className="font-display-bold text-[34px] leading-[40px] text-ink">To do</Text>
-        <Text className="mt-0.5 text-sm text-ink-soft">{summary}</Text>
+      <View className="mb-4">
+        <View className="flex-row items-center gap-3">
+          {/* Same icon and tile as the active To do entry in the sidebar. */}
+          <View className="h-10 w-10 items-center justify-center rounded-xl bg-fresh-600">
+            <MaterialCommunityIcons name={NAV.todo.icon} size={22} color="#ffffff" />
+          </View>
+          <Text className="font-display-bold text-[34px] leading-[40px] text-ink">To do</Text>
+        </View>
+        <View className="mt-2 flex-row flex-wrap gap-2">
+          {actionNeeded.length === 0 && <FreshnessChip freshness="fresh" label="Nothing needs you right now" />}
+          {expired > 0 && <FreshnessChip freshness="expired" label={`${expired} past date`} />}
+          {soon > 0 && <FreshnessChip freshness="soon" label={`${soon} expiring soon`} />}
+        </View>
       </View>
+      <View className="mb-5 h-px bg-line" />
 
       <View className={twoColumn ? 'flex-row items-start gap-5' : 'gap-5'}>
         <View style={twoColumn ? { flex: 1.1 } : undefined}>
@@ -36,9 +46,13 @@ export default function TodoScreen() {
         </View>
         <View className="gap-5" style={twoColumn ? { flex: 1 } : undefined}>
           <RecipesCard delay={80} />
-          <InsightsCard delay={160} />
-          <ShoppingCard delay={240} />
+          <ShoppingCard delay={160} />
         </View>
+      </View>
+
+      {/* Full width under both columns: it's about past waste, not today's decisions. */}
+      <View className="mt-5">
+        <InsightsCard delay={240} />
       </View>
     </ScrollView>
   )

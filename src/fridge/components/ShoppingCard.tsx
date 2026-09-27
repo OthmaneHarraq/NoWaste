@@ -9,11 +9,14 @@ import { FadeIn } from '@/ui/motion'
 import { useTheme } from '@/ui/ThemeProvider'
 import { shadow } from '@/ui/theme'
 
+// Capped so the To do tab's two columns land close in height.
+const MAX_ROWS = 5
+
 /** A short checklist for the next shop: what to buy less of, smaller, or frozen. */
 export function ShoppingCard({ delay = 240 }: { delay?: number }) {
   const { history, now } = useFridge()
   const { c } = useTheme()
-  const suggestions = useMemo(() => shoppingSuggestions(wastePatterns(history, 30, now)), [history, now])
+  const suggestions = useMemo(() => shoppingSuggestions(wastePatterns(history, 30, now)).slice(0, MAX_ROWS), [history, now])
   // Ticked = "noted for next time". Just for this visit; it's a nudge, not a saved list.
   const [done, setDone] = useState<Set<string>>(() => new Set())
   const toggle = (name: string) => setDone(prev => {

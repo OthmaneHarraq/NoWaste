@@ -49,24 +49,25 @@ export default function ImpactScreen() {
         <View className="gap-5" style={wide ? { flex: 1.35 } : undefined}>
           {/* Hero */}
           <FadeIn>
-            <View className="overflow-hidden rounded-3xl border border-[#23402f] bg-[#123526] p-6">
-              <MaterialCommunityIcons name="leaf" size={180} color="#1b4a35" style={{ position: 'absolute', right: -24, top: -30, transform: [{ rotate: '-18deg' }] }} />
-              <Text className="text-xs font-bold uppercase tracking-[2px] text-[#8fc9a8]">Waste avoided</Text>
+            {/* Soft highlight tile, same treatment as the sidebar's ScoreCard. */}
+            <View className="overflow-hidden rounded-3xl border border-fresh-100 p-6" style={{ backgroundColor: c.primaryLight }}>
+              <MaterialCommunityIcons name="leaf" size={180} color={c.fresh} style={{ position: 'absolute', right: -24, top: -30, opacity: 0.12, transform: [{ rotate: '-18deg' }] }} />
+              <Text className="text-xs font-bold uppercase tracking-[2px]" style={{ color: c.primary }}>Waste avoided</Text>
               <View className="mt-1 flex-row items-end gap-3">
                 {pct === null
-                  ? <Text className="font-display-bold text-[64px] text-white">—</Text>
-                  : <CountUp value={pct} format={v => `${Math.round(v)}%`} className="font-display-bold text-[68px] leading-[72px] text-white" />}
-                <Text className="mb-3 max-w-[220px] text-[15px] leading-5 text-[#cfe7d9]">of the food that left your fridge got eaten, not binned</Text>
+                  ? <Text className="font-display-bold text-[64px]" style={{ color: c.text }}>—</Text>
+                  : <CountUp value={pct} format={v => `${Math.round(v)}%`} className="font-display-bold text-[68px] leading-[72px] text-ink" />}
+                <Text className="mb-3 max-w-[220px] text-[15px] leading-5" style={{ color: c.textSoft }}>of the food that left your fridge got eaten, not binned</Text>
               </View>
 
               {/* Proportion strip: saved | wasted */}
-              <View className="mt-4 h-3 flex-row overflow-hidden rounded-full bg-[#1d4a37]" style={{ gap: 2 }}>
-                {t.saved > 0 && <View style={{ flex: t.saved, backgroundColor: '#5fd497' }} />}
+              <View className="mt-4 h-3 flex-row overflow-hidden rounded-full" style={{ gap: 2, backgroundColor: c.glass }}>
+                {t.saved > 0 && <View style={{ flex: t.saved, backgroundColor: c.fresh }} />}
                 {t.wasted > 0 && <View style={{ flex: t.wasted, backgroundColor: WASTED }} />}
               </View>
               <View className="mt-2 flex-row gap-5">
-                <Text className="text-[13px] text-[#cfe7d9]"><Text className="font-bold text-white">{t.saved}</Text> items saved</Text>
-                <Text className="text-[13px] text-[#cfe7d9]"><Text className="font-bold text-white">{t.wasted}</Text> wasted</Text>
+                <Text className="text-[13px]" style={{ color: c.textSoft }}><Text className="font-bold" style={{ color: c.text }}>{t.saved}</Text> items saved</Text>
+                <Text className="text-[13px]" style={{ color: c.textSoft }}><Text className="font-bold" style={{ color: c.text }}>{t.wasted}</Text> wasted</Text>
               </View>
             </View>
           </FadeIn>

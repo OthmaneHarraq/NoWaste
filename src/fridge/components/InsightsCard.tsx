@@ -7,12 +7,15 @@ import { FadeIn } from '@/ui/motion'
 import { useTheme } from '@/ui/ThemeProvider'
 import { shadow } from '@/ui/theme'
 
+const MAX_LINES = 3
+
 /** "You've wasted spinach 3 times this month…". Works with no AI at all (templated). */
 export function InsightsCard({ delay = 120 }: { delay?: number }) {
   const { history, now } = useFridge()
   const { household } = useHousehold()
   const { c } = useTheme()
-  const { lines, source } = useInsights(history, household?.id, now)
+  const { lines: all, source } = useInsights(history, household?.id, now)
+  const lines = all.slice(0, MAX_LINES)
 
   return (
     <FadeIn delay={delay}>

@@ -46,9 +46,8 @@ const FILTERS: { key: Filter; label: string; icon: IconName; kinds: ActivityKind
 ]
 
 const WEB = Platform.OS === 'web'
-// Web-only texture and gradient (plain colours elsewhere).
+// Web-only texture (plain colour elsewhere).
 const DOTS = WEB ? 'bg-[radial-gradient(#cfdcd3_1.2px,transparent_1.2px)] bg-[length:20px_20px] dark:bg-[radial-gradient(#1f2a25_1.2px,transparent_1.2px)]' : ''
-const HERO_GRADIENT = WEB ? 'bg-[linear-gradient(125deg,#0f2e21_0%,#17442f_45%,#1f6b47_100%)]' : ''
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
 
@@ -179,59 +178,63 @@ function Hero({ today, activity, now, phone }: { today: ReturnType<typeof counts
     return { d: new Date(d), in: c.in, out: c.out + c.used + c.wasted }
   })
   const max = Math.max(1, ...days.map(d => Math.max(d.in, d.out)))
+  const { c } = useTheme()
+  // Sections inside the tile: a see-through wash of the surface, so they read as part of it.
+  const section = { backgroundColor: c.surface + 'b3' }
 
   const stats: { label: string; n: number; icon: IconName; color: string }[] = [
-    { label: 'Added', n: today.in, icon: 'arrow-down-bold', color: '#9fd0f5' },
-    { label: 'Taken out', n: today.out, icon: 'arrow-up-bold', color: '#cfe7d9' },
-    { label: 'Used up', n: today.used, icon: 'silverware-fork-knife', color: '#5fd497' },
-    { label: 'Wasted', n: today.wasted, icon: 'trash-can-outline', color: '#f7a596' },
+    { label: 'Added', n: today.in, icon: 'arrow-down-bold', color: c.ice },
+    { label: 'Taken out', n: today.out, icon: 'arrow-up-bold', color: c.textSoft },
+    { label: 'Used up', n: today.used, icon: 'silverware-fork-knife', color: c.fresh },
+    { label: 'Wasted', n: today.wasted, icon: 'trash-can-outline', color: c.spoiled },
   ]
 
   return (
     <FadeIn>
-      <View className={`overflow-hidden rounded-[28px] border border-[#23402f] bg-[#123526] ${HERO_GRADIENT}`} style={[{ padding: phone ? 20 : 28 }, shadow.raised]}>
+      {/* Soft highlight tile, same treatment as the sidebar's ScoreCard. */}
+      <View className="overflow-hidden rounded-[28px] border border-fresh-100" style={[{ padding: phone ? 20 : 28, backgroundColor: c.primaryLight }, shadow.card]}>
         {/* Decorative shapes */}
-        <MaterialCommunityIcons name="fridge-outline" size={220} color="#ffffff" style={{ position: 'absolute', right: -30, top: -30, opacity: 0.05, transform: [{ rotate: '8deg' }] }} />
-        <MaterialCommunityIcons name="leaf" size={120} color="#ffffff" style={{ position: 'absolute', left: '42%', bottom: -40, opacity: 0.05, transform: [{ rotate: '-24deg' }] }} />
+        <MaterialCommunityIcons name="fridge-outline" size={220} color={c.fresh} style={{ position: 'absolute', right: -30, top: -30, opacity: 0.1, transform: [{ rotate: '8deg' }] }} />
+        <MaterialCommunityIcons name="leaf" size={120} color={c.fresh} style={{ position: 'absolute', left: '42%', bottom: -40, opacity: 0.12, transform: [{ rotate: '-24deg' }] }} />
 
         <View className="flex-row flex-wrap items-end justify-between gap-6">
           <View style={{ minWidth: 260, flexGrow: 1, flexShrink: 1, flexBasis: 420 }}>
-            <Text className="text-xs font-bold uppercase tracking-[3px] text-[#8fc9a8]">Activity</Text>
-            <Text className={`${phone ? 'text-[30px]' : 'text-[40px]'} mt-1 font-display-bold leading-[1.1] text-white`}>Today in your fridge</Text>
-            <Text className="mt-1 text-[14px] text-[#cfe7d9]">{now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
+            <Text className="text-xs font-bold uppercase tracking-[3px]" style={{ color: c.primary }}>Activity</Text>
+            <Text className={`${phone ? 'text-[30px]' : 'text-[40px]'} mt-1 font-display-bold leading-[1.1]`} style={{ color: c.text }}>Today in your fridge</Text>
+            <Text className="mt-1 text-[14px]" style={{ color: c.textSoft }}>{now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
 
             <View className="mt-6 flex-row flex-wrap gap-3">
               {stats.map(s => (
-                <View key={s.label} style={{ flexGrow: 1, flexBasis: 112 }} className="min-w-[112px] rounded-2xl border border-[#2a5a43] bg-[#ffffff12] px-4 py-3">
+                <View key={s.label} style={[{ flexGrow: 1, flexBasis: 112 }, section]} className="min-w-[112px] rounded-2xl border border-fresh-100 px-4 py-3">
                   <View className="flex-row items-center gap-2">
                     <View className="h-7 w-7 items-center justify-center rounded-full" style={{ backgroundColor: s.color + '33' }}>
                       <MaterialCommunityIcons name={s.icon} size={15} color={s.color} />
                     </View>
-                    <Text className="text-[12px] font-semibold text-[#cfe7d9]">{s.label}</Text>
+                    <Text className="text-[12px] font-semibold" style={{ color: c.textSoft }}>{s.label}</Text>
                   </View>
-                  <Text className="mt-1.5 text-[30px] font-extrabold leading-[34px] text-white">{s.n}</Text>
+                  <Text className="mt-1.5 text-[30px] font-extrabold leading-[34px]" style={{ color: c.text }}>{s.n}</Text>
                 </View>
               ))}
             </View>
           </View>
 
           {/* 7-day in/out chart */}
-          <View className="rounded-2xl border border-[#2a5a43] bg-[#ffffff0d] p-4" style={{ minWidth: 280, flexGrow: 1, flexBasis: 320 }}>
+          <View className="rounded-2xl border border-fresh-100 p-4" style={[{ minWidth: 280, flexGrow: 1, flexBasis: 320 }, section]}>
             <View className="mb-3 flex-row items-center justify-between">
-              <Text className="text-[12px] font-bold uppercase tracking-[2px] text-[#8fc9a8]">Last 7 days</Text>
+              <Text className="text-[12px] font-bold uppercase tracking-[2px]" style={{ color: c.primary }}>Last 7 days</Text>
               <View className="flex-row gap-3">
-                <Key color="#9fd0f5" label="In" />
-                <Key color="#5fd497" label="Out" />
+                <Key color={c.ice} label="In" />
+                <Key color={c.fresh} label="Out" />
               </View>
             </View>
             <View className="flex-row items-end gap-3" style={{ height: 96 }}>
               {days.map((d, i) => (
                 <View key={i} className="flex-1 items-center gap-1.5">
                   <View className="w-full flex-row items-end justify-center gap-1" style={{ height: 76 }}>
-                    <View className="w-2.5 rounded-t-md" style={{ height: d.in ? Math.max(3, (d.in / max) * 76) : 0, backgroundColor: '#9fd0f5' }} />
-                    <View className="w-2.5 rounded-t-md" style={{ height: d.out ? Math.max(3, (d.out / max) * 76) : 0, backgroundColor: '#5fd497' }} />
+                    <View className="w-2.5 rounded-t-md" style={{ height: d.in ? Math.max(3, (d.in / max) * 76) : 0, backgroundColor: c.ice }} />
+                    <View className="w-2.5 rounded-t-md" style={{ height: d.out ? Math.max(3, (d.out / max) * 76) : 0, backgroundColor: c.fresh }} />
                   </View>
-                  <Text className={`text-[11px] ${i === 6 ? 'font-bold text-white' : 'text-[#8fc9a8]'}`}>
+                  <Text className={`text-[11px] ${i === 6 ? 'font-bold' : ''}`} style={{ color: i === 6 ? c.text : c.textSoft }}>
                     {i === 6 ? 'Today' : d.d.toLocaleDateString(undefined, { weekday: 'narrow' })}
                   </Text>
                 </View>
@@ -245,10 +248,11 @@ function Hero({ today, activity, now, phone }: { today: ReturnType<typeof counts
 }
 
 function Key({ color, label }: { color: string; label: string }) {
+  const { c } = useTheme()
   return (
     <View className="flex-row items-center gap-1.5">
       <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: color }} />
-      <Text className="text-[11px] text-[#cfe7d9]">{label}</Text>
+      <Text className="text-[11px]" style={{ color: c.textSoft }}>{label}</Text>
     </View>
   )
 }

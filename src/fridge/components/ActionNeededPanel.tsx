@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, ScrollView, Text, View } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { FadeIn } from '@/ui/motion'
 import { displayName } from '../categories'
@@ -9,12 +9,18 @@ import { FoodShape, FoodTile } from './FoodShape'
 import { FRESHNESS } from './visuals'
 import { useTheme } from '@/ui/ThemeProvider'
 
+// Every item always shows, but past this many the list scrolls inside the card instead of
+// growing without bound. ~6.5 rows tall, so the cut-off row hints that there's more.
+const SCROLL_AT = 7
+const SCROLL_MAX_HEIGHT = 420
+
 /** The core of the app: what to eat or bin today. Always visible on the dashboard. */
 export function ActionNeededPanel() {
   const { actionNeeded, loading } = useFridge()
   const expired = actionNeeded.filter(i => freshnessOf(i) === 'expired').length
   const clear = !loading && actionNeeded.length === 0
   const { c } = useTheme()
+  const rows = actionNeeded.map((item, i) => <ActionRow key={item.id} item={item} index={i} last={i === actionNeeded.length - 1} />)
 
   return (
     <View
@@ -47,7 +53,11 @@ export function ActionNeededPanel() {
           <FoodShape name="cheese" category="dairy" scale={0.8} />
         </View>
       )}
-      {actionNeeded.map((item, i) => <ActionRow key={item.id} item={item} index={i} last={i === actionNeeded.length - 1} />)}
+      {actionNeeded.length >= SCROLL_AT ? (
+        // overscrollBehavior: on web, a wheel at the list's end must not go on to scroll the
+        // page, which would move the right column along with it.
+        <ScrollView style={{ maxHeight: SCROLL_MAX_HEIGHT, overscrollBehavior: 'contain' } as object} nestedScrollEnabled>{rows}</ScrollView>
+      ) : rows}
     </View>
   )
 }
@@ -61,6 +71,8 @@ function ActionRow({ item, index, last }: { item: FridgeItem; index: number; las
   return (
     <FadeIn delay={index * 40} from={6}>
       <View className={`flex-row flex-wrap items-center gap-3 px-4 py-3 ${last ? '' : 'border-b border-line'}`}>
+        {/* Severity edge, same freshness color as the expiry label. */}
+        <View className={`absolute bottom-0 left-0 top-0 w-1 ${f.stripe}`} />
         <FoodTile name={item.name} category={item.category} size={40} />
         <View className="min-w-[110px] flex-1">
           <Text numberOfLines={1} className="text-[15px] font-semibold text-ink">{displayName(item.name)}</Text>

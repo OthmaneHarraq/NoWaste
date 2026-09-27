@@ -9,6 +9,9 @@ import { FadeIn } from '@/ui/motion'
 import { useTheme } from '@/ui/ThemeProvider'
 import { shadow } from '@/ui/theme'
 
+// Capped so the To do tab's two columns land close in height.
+const MAX_RECIPES = 3
+
 const list = (names: string[]) =>
   names.length <= 2 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 
@@ -61,7 +64,7 @@ export function RecipesCard({ delay = 120 }: { delay?: number }) {
 
         {state.status === 'ready' && (
           <View className="gap-2.5">
-            {state.recipes.map(r => <RecipeRow key={r.id} recipe={r} />)}
+            {state.recipes.slice(0, MAX_RECIPES).map(r => <RecipeRow key={r.id} recipe={r} />)}
             <Text className="mt-1 text-[11px] text-mute">
               {state.source === 'ai' ? 'Ideas written by AI. Use your judgement on food safety.' : 'Recipes from TheMealDB'}
             </Text>
