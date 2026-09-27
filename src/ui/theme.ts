@@ -21,20 +21,15 @@ export type Palette = {
 }
 
 export const palettes: { light: Palette; dark: Palette } = {
-  // Light palette: warm linen neutrals (2026-09-26). Replaced values, for a quick manual revert:
-  //   background #e9eee8, surface #ffffff, frost #e0e8e1, border #d7e0d9, primary #23804a,
-  //   primaryLight #eef8f1, text #17251f, textSoft #4c5d55, muted #8a9a93
-  //   (also raised #ffffff, unknown #8a9a93, freshTint #eef8f1, enamel #fbfcfb, enamelEdge #dde5e1;
-  //   in global.css fresh-100 #d5eedc). primary, text and the freshness hues are unchanged.
   light: {
-    primary: '#23804a', primaryLight: '#edf4e8',
-    background: '#ece7de', surface: '#fffdf9', raised: '#fffdf9', frost: '#f5f1ea',
-    text: '#17251f', textSoft: '#505750', muted: '#736f67', onInk: '#ffffff',
-    border: '#e0d9cc', glass: '#cfe2db',
-    fresh: '#2f9e5b', soon: '#e39a1b', spoiled: '#d9493a', unknown: '#736f67',
-    freshTint: '#edf4e8', soonTint: '#fff7e8', spoiledTint: '#fdefed',
+    primary: '#23804a', primaryLight: '#eef8f1',
+    background: '#e9eee8', surface: '#ffffff', raised: '#ffffff', frost: '#e0e8e1',
+    text: '#17251f', textSoft: '#4c5d55', muted: '#8a9a93', onInk: '#ffffff',
+    border: '#d7e0d9', glass: '#cfe2db',
+    fresh: '#2f9e5b', soon: '#e39a1b', spoiled: '#d9493a', unknown: '#8a9a93',
+    freshTint: '#eef8f1', soonTint: '#fff7e8', spoiledTint: '#fdefed',
     ice: '#5b8fb9', iceBg: '#eaf3fa', iceLine: '#cfe1ef', iceGlass: '#bcd6ea', iceText: '#3f6a8f',
-    enamel: '#fdfcf8', enamelEdge: '#e1dbcf', metal: '#d3dcd8', metalHi: '#ffffff',
+    enamel: '#fbfcfb', enamelEdge: '#dde5e1', metal: '#d3dcd8', metalHi: '#ffffff',
     danger: '#d9493a', dangerLight: '#fdefed', warning: '#e39a1b', warningLight: '#fff7e8',
   },
   dark: {
