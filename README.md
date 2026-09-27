@@ -123,7 +123,8 @@ To run it against a real Supabase project, deploy the AI functions, or develop o
 
 ## What's next
 
-- A camera built into the fridge that wakes on the door light
-- Sharper recognition: the clearest frames, at higher resolution, to a stronger vision model
-- In/out zones, so the side of the frame an item leaves by decides its direction
-- App-store builds and per-household AI limits
+- A camera built into the fridge, facing out, that wakes when the door light turns on
+- Sharper recognition: send the clearest frames at higher resolution to a stronger vision model
+- Training our own model to recognize food items
+
+Read the full story (what inspired us, how we built it and what we learned) in **[docs/STORY.md](docs/STORY.md)**.
