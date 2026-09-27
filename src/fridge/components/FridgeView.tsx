@@ -71,7 +71,9 @@ export function FridgeView({ items, filtered }: { items: FridgeItem[]; filtered:
       <View className="flex-1" style={{ minHeight: 0 }}>
       <ScrollView
         className={`flex-1 ${CSS.scrollGutter}`}
-        contentContainerStyle={{ paddingTop: 26, paddingBottom: 26, paddingHorizontal: 16 }}
+        // flexGrow + center: when the card is taller than the appliance, it sits in the middle
+        // instead of pinned to the top; taller content still scrolls normally.
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingTop: 26, paddingBottom: 26, paddingHorizontal: 16 }}
         onScroll={() => setDetail(null)}
         scrollEventThrottle={64}
       >
