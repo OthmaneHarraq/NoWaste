@@ -127,9 +127,10 @@ export default function FridgeScreen() {
           <View className="flex-1" style={{ minHeight: 0 }}>{contents(true)}</View>
           {view === 'normal' && <Legend />}
         </View>
-        <ScrollView style={{ width: 360, flexGrow: 0 }} contentContainerStyle={{ gap: 20, paddingBottom: 8 }} showsVerticalScrollIndicator={false}>
-          <LiveFeed />
-        </ScrollView>
+        {/* Stretches to the fridge's full height; the feed scrolls its own list inside. */}
+        <View style={{ width: 360, minHeight: 0 }}>
+          <LiveFeed fill />
+        </View>
       </View>
     )
   }

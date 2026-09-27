@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native'
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { FadeIn, LiveDot } from '@/ui/motion'
 import { shadow } from '@/ui/theme'
@@ -9,6 +9,10 @@ import type { ActivityEntry } from '../types'
 import { FoodTile } from './FoodShape'
 import { useTheme } from '@/ui/ThemeProvider'
 
+// Web: a slim scrollbar in the theme's line colour rather than the browser's default gutter.
+const WEB_THIN_SCROLLBAR = (color: string) =>
+  (Platform.OS === 'web' ? { scrollbarWidth: 'thin', scrollbarColor: `${color} transparent` } : {}) as object
+
 const VERB: Partial<Record<ActivityEntry['kind'], { text: string; icon: 'arrow-down' | 'arrow-up' | 'undo'; color: 'primary' | 'textSoft' | 'ice' }>> = {
   added:    { text: 'Just added', icon: 'arrow-down', color: 'primary' },
   removed:  { text: 'Taken out',  icon: 'arrow-up',   color: 'textSoft' },
@@ -18,16 +22,19 @@ const VERB: Partial<Record<ActivityEntry['kind'], { text: string; icon: 'arrow-d
 /**
  * The latest in/out detections, straight off the same realtime stream as the dashboard.
  * The bracketed "viewport" stands in for a camera frame until the backend exposes one.
+ *
+ * `fill` (wide web): the card takes its column's full height, the header stays put and the
+ * detections list scrolls on its own. Otherwise it hugs a short list, as on phones.
  */
-export function LiveFeed() {
+export function LiveFeed({ fill = false }: { fill?: boolean }) {
   const { activity, connection, now, simulatedCamera, setSimulatedCamera } = useFridge()
-  const detections = activity.filter(a => VERB[a.kind] && !a.undone).slice(0, 5)
+  const detections = activity.filter(a => VERB[a.kind] && !a.undone).slice(0, fill ? 40 : 5)
   const latest = detections[0]
   const { c } = useTheme()
   const on = connection === 'live' || (connection === 'demo' && simulatedCamera !== false)
 
   return (
-    <View className="overflow-hidden rounded-3xl border border-line bg-surface" style={shadow.card}>
+    <View className="overflow-hidden rounded-3xl border border-line bg-surface" style={fill ? [shadow.card, { flex: 1, minHeight: 0 }] : shadow.card}>
       {/* Same treatment as the sidebar's "This month" tile: theme tint, fresh border and accents. */}
       <View className="border-b border-fresh-100 px-4 pb-3 pt-3.5" style={{ backgroundColor: c.primaryLight }}>
         <View className="flex-row items-center justify-between">
@@ -63,26 +70,46 @@ export function LiveFeed() {
         </View>
       </View>
 
-      <View className="px-2 py-1.5">
-        {detections.map(a => {
-          const v = VERB[a.kind]!
-          return (
-            <FadeIn key={a.id} from={-6}>
-              <View className="flex-row items-center gap-3 rounded-xl px-2 py-2">
-                <FoodTile name={a.itemName} category={a.category} size={34} />
-                <View className="flex-1">
-                  <Text numberOfLines={1} className="text-sm text-ink">
-                    <Text className="font-semibold" style={{ color: c[v.color] }}>{v.text}: </Text>
-                    {displayName(a.itemName)}
-                  </Text>
-                  <Text className="text-xs text-mute">{timeAgo(a.at, now.getTime())} · {a.via}</Text>
+      <View style={fill ? { flex: 1, minHeight: 0 } : undefined}>
+        <ScrollView
+          scrollEnabled={fill}
+          style={fill ? [{ flex: 1, minHeight: 0 }, WEB_THIN_SCROLLBAR(c.border)] : undefined}
+          contentContainerStyle={fill ? { flexGrow: 1, paddingHorizontal: 8, paddingTop: 6, paddingBottom: 22 } : { paddingHorizontal: 8, paddingVertical: 6 }}
+          showsVerticalScrollIndicator={fill}
+        >
+          {detections.map(a => {
+            const v = VERB[a.kind]!
+            return (
+              <FadeIn key={a.id} from={-6}>
+                <View className="flex-row items-center gap-3 rounded-xl px-2 py-2">
+                  <FoodTile name={a.itemName} category={a.category} size={34} />
+                  <View className="flex-1">
+                    <Text numberOfLines={1} className="text-sm text-ink">
+                      <Text className="font-semibold" style={{ color: c[v.color] }}>{v.text}: </Text>
+                      {displayName(a.itemName)}
+                    </Text>
+                    <Text className="text-xs text-mute">{timeAgo(a.at, now.getTime())} · {a.via}</Text>
+                  </View>
+                  <MaterialCommunityIcons name={v.icon} size={16} color={c[v.color]} />
                 </View>
-                <MaterialCommunityIcons name={v.icon} size={16} color={c[v.color]} />
-              </View>
-            </FadeIn>
-          )
-        })}
-        {detections.length === 0 && <Text className="px-2 py-3 text-sm text-mute">No detections yet.</Text>}
+              </FadeIn>
+            )
+          })}
+          {detections.length === 0 && !fill && <Text className="px-2 py-3 text-sm text-mute">No detections yet.</Text>}
+          {/* A tall card with a short list: a quiet note in the leftover space, not a blank box. */}
+          {fill && detections.length < 8 && (
+            <View className="flex-1 items-center justify-center gap-2 px-6 py-8" style={{ minHeight: 140 }}>
+              <MaterialCommunityIcons name="cctv" size={26} color={c.muted} style={{ opacity: 0.6 }} />
+              <Text className="text-center text-xs leading-5 text-mute">
+                {detections.length === 0 ? 'No detections yet. Items show up here as the door camera sees them go in or out.' : 'New detections appear at the top as the door camera sees them.'}
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+        {/* Rows ease out under the card's bottom edge instead of being cut off. */}
+        {fill && Platform.OS === 'web' && (
+          <View pointerEvents="none" className="absolute bottom-0 left-0 right-3 h-7" style={{ backgroundImage: `linear-gradient(to top, ${c.surface}, transparent)` } as object} />
+        )}
       </View>
     </View>
   )
